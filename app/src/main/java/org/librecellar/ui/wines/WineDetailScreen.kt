@@ -69,6 +69,8 @@ import androidx.compose.ui.unit.sp
 import org.librecellar.data.model.CellarLocation
 import org.librecellar.data.model.CountryHelper
 import org.librecellar.data.model.Wine
+import org.librecellar.ui.components.GrapeBadge
+import org.librecellar.ui.components.GrapeBadgesFlow
 import org.librecellar.ui.components.RatingBar
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundy
@@ -396,6 +398,12 @@ fun WineDetailScreen(
                     }
                     wine.varietal?.let {
                         WineDetailRow(label = "Varietal / Blend", value = it, icon = Icons.Default.WineBar)
+                        if (wine.varietalList.isNotEmpty()) {
+                            GrapeBadgesFlow(
+                                grapes = wine.varietalList,
+                                modifier = Modifier.padding(start = 28.dp, top = 2.dp, bottom = 4.dp)
+                            )
+                        }
                     }
                     wine.size?.let {
                         WineDetailRow(label = "Bottle Size", value = it, icon = Icons.Default.LocalDrink)

@@ -121,6 +121,12 @@ data class Wine(
             }
         }
 
+    val varietalList: List<String>
+        get() = varietal?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotBlank() }
+            ?: emptyList()
+
     fun getResolvedPriceTier(allWines: List<Wine>): WinePriceTier {
         return WinePriceTier.fromKey(priceTier)
             ?: WinePriceTier.calculateDynamicTier(purchasePrice, allWines)

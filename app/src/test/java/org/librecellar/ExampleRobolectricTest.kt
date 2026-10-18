@@ -63,15 +63,33 @@ class ExampleRobolectricTest {
   }
 
   @Test
-  fun `test wine country and region split fields`() {
+  fun `test wine varietal list tags parsing`() {
     val wine = Wine(
       name = "Château Margaux",
       vintage = 2015,
-      country = "France",
-      region = "Bordeaux"
+      varietal = "Cabernet Sauvignon, Merlot, Petit Verdot"
     )
-    assertEquals("France", wine.country)
-    assertEquals("Bordeaux", wine.region)
+    val grapes = wine.varietalList
+    assertEquals(3, grapes.size)
+    assertEquals("Cabernet Sauvignon", grapes[0])
+    assertEquals("Merlot", grapes[1])
+    assertEquals("Petit Verdot", grapes[2])
+  }
+
+  @Test
+  fun `test grape registration and autocomplete in repository`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val repository = org.librecellar.data.repository.WineRepository(context)
+
+    val initialGrapes = repository.knownGrapes.value
+    assertTrue(initialGrapes.isNotEmpty())
+
+    // Register a new grape not previously in standard list
+    val newGrape = "Rkatsiteli"
+    repository.registerGrape(newGrape)
+
+    val updatedGrapes = repository.knownGrapes.value
+    assertTrue(updatedGrapes.any { it.equals(newGrape, ignoreCase = true) })
   }
 }
 

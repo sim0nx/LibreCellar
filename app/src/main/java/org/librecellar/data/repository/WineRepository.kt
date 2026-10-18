@@ -128,6 +128,63 @@ class WineRepository(private val context: Context) {
         return org.librecellar.data.model.WinePriceTier.calculateDynamicTier(price, _wines.value)
     }
 
+    // --- Known Varietals / Grapes Management & Autocomplete ---
+    private fun getPersistedCustomGrapes(): Set<String> {
+        return prefs.getStringSet("custom_wine_grapes", emptySet()) ?: emptySet()
+    }
+
+    fun computeAllKnownGrapes(): List<String> {
+        val fromWines = _wines.value.flatMap { it.varietalList }
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinctBy { it.lowercase() }
+        val custom = getPersistedCustomGrapes()
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinctBy { it.lowercase() }
+        val defaults = DEFAULT_KNOWN_GRAPES
+            .filter { def ->
+                fromWines.none { it.equals(def, ignoreCase = true) } &&
+                custom.none { it.equals(def, ignoreCase = true) }
+            }
+
+        // Put cellar grapes first, then custom grapes, then standard varieties
+        return (fromWines.sortedWith(String.CASE_INSENSITIVE_ORDER) +
+                custom.filter { c -> fromWines.none { it.equals(c, ignoreCase = true) } }.sortedWith(String.CASE_INSENSITIVE_ORDER) +
+                defaults.sortedWith(String.CASE_INSENSITIVE_ORDER))
+    }
+
+    private val _knownGrapes = MutableStateFlow<List<String>>(computeAllKnownGrapes())
+    val knownGrapes: StateFlow<List<String>> = _knownGrapes.asStateFlow()
+
+    fun registerGrape(grape: String) {
+        val trimmed = grape.trim()
+        if (trimmed.isBlank()) return
+        val currentCustom = getPersistedCustomGrapes().toMutableSet()
+        val alreadyExistsInCustom = currentCustom.any { it.equals(trimmed, ignoreCase = true) }
+        if (!alreadyExistsInCustom) {
+            currentCustom.add(trimmed)
+            prefs.edit().putStringSet("custom_wine_grapes", currentCustom).apply()
+        }
+        _knownGrapes.value = computeAllKnownGrapes()
+    }
+
+    fun registerGrapes(grapes: List<String>) {
+        grapes.forEach { registerGrape(it) }
+    }
+
+    companion object {
+        val DEFAULT_KNOWN_GRAPES = listOf(
+            "Cabernet Sauvignon", "Merlot", "Pinot Noir", "Chardonnay", "Sauvignon Blanc",
+            "Syrah", "Shiraz", "Nebbiolo", "Sangiovese", "Tempranillo", "Riesling",
+            "Zinfandel", "Malbec", "Grenache", "Cabernet Franc", "Pinot Grigio",
+            "Pinot Gris", "Chenin Blanc", "Viognier", "Gewürztraminer", "Gamay",
+            "Petit Verdot", "Carménère", "Barbera", "Corvina", "Glera", "Prosecco",
+            "Mourvèdre", "Primitivo", "Torrontés", "Grüner Veltliner", "Albariño",
+            "Vermentino", "Sémillon", "Muscat", "Garganega", "Montepulciano", "Nero d'Avola"
+        )
+    }
+
     private val moshi = Moshi.Builder()
         .addLast(KotlinJsonAdapterFactory())
         .build()
@@ -632,7 +689,9 @@ class WineRepository(private val context: Context) {
             }
         }
 
+        registerGrapes(finalWine.varietalList)
         _wines.value = _wines.value + finalWine
+        _knownGrapes.value = computeAllKnownGrapes()
         finalWine
     }
 
@@ -644,7 +703,9 @@ class WineRepository(private val context: Context) {
                 Log.w("WineRepository", "Backend updateWine failed", e)
             }
         }
+        registerGrapes(wine.varietalList)
         _wines.value = _wines.value.map { if (it.id == wine.id) wine else it }
+        _knownGrapes.value = computeAllKnownGrapes()
         wine
     }
 

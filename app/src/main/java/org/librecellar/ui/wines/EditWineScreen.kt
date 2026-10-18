@@ -82,6 +82,7 @@ import org.librecellar.data.model.Wine
 import org.librecellar.data.model.WinePriceTier
 import org.librecellar.data.model.WineType
 import org.librecellar.ui.components.CountryDropdownSelect
+import org.librecellar.ui.components.GrapeTagInput
 import org.librecellar.ui.components.RatingBar
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundy
@@ -96,6 +97,8 @@ fun EditWineScreen(
     suppliers: List<Supplier>,
     allWines: List<Wine>,
     isPriceTierEnabled: Boolean = true,
+    knownGrapes: List<String> = emptyList(),
+    onRegisterGrape: (String) -> Unit = {},
     onSaveWine: (Wine) -> Unit,
     onCancel: () -> Unit
 ) {
@@ -112,7 +115,7 @@ fun EditWineScreen(
         )
     }
     var producer by remember(wine) { mutableStateOf(wine.producer ?: "") }
-    var varietal by remember(wine) { mutableStateOf(wine.varietal ?: "") }
+    var selectedGrapes by remember(wine) { mutableStateOf(wine.varietalList) }
     var country by remember(wine) { mutableStateOf(wine.country ?: "") }
     var region by remember(wine) { mutableStateOf(wine.region ?: "") }
 
@@ -120,6 +123,10 @@ fun EditWineScreen(
         (allWines.mapNotNull { it.country } + suppliers.mapNotNull { it.country })
             .filter { it.isNotBlank() }
             .toSet()
+    }
+
+    val usedGrapes = remember(allWines) {
+        allWines.flatMap { it.varietalList }.map { it.trim() }.filter { it.isNotBlank() }.toSet()
     }
 
     // Inventory & Placement
@@ -204,7 +211,7 @@ fun EditWineScreen(
                                     vintage = vintageInt!!,
                                     wineType = selectedType.name,
                                     producer = producer.trim().ifBlank { null },
-                                    varietal = varietal.trim().ifBlank { null },
+                                    varietal = selectedGrapes.joinToString(", ").ifBlank { null },
                                     country = country.trim().ifBlank { null },
                                     region = region.trim().ifBlank { null },
                                     quantity = quantity,
@@ -359,12 +366,12 @@ fun EditWineScreen(
                         }
                     }
 
-                    OutlinedTextField(
-                        value = varietal,
-                        onValueChange = { varietal = it },
-                        label = { Text("Varietal / Grape Blend") },
-                        placeholder = { Text("e.g. Cabernet Sauvignon 70%, Merlot 30%") },
-                        singleLine = true,
+                    GrapeTagInput(
+                        selectedGrapes = selectedGrapes,
+                        onGrapesChange = { selectedGrapes = it },
+                        availableGrapes = knownGrapes,
+                        usedGrapes = usedGrapes,
+                        onNewGrapeEntered = onRegisterGrape,
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("edit_wine_varietal_input")
@@ -803,7 +810,7 @@ fun EditWineScreen(
                                 vintage = vintageInt!!,
                                 wineType = selectedType.name,
                                 producer = producer.trim().ifBlank { null },
-                                varietal = varietal.trim().ifBlank { null },
+                                varietal = selectedGrapes.joinToString(", ").ifBlank { null },
                                 country = country.trim().ifBlank { null },
                                 region = region.trim().ifBlank { null },
                                 quantity = quantity,

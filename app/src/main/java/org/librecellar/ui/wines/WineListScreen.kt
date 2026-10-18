@@ -96,6 +96,8 @@ import org.librecellar.data.model.CountryHelper
 import org.librecellar.data.model.Wine
 import org.librecellar.data.model.WinePriceTier
 import org.librecellar.ui.components.BarcodeScannerDialog
+import org.librecellar.ui.components.GrapeBadge
+import org.librecellar.ui.components.GrapeBadgesRow
 import org.librecellar.ui.components.RatingBar
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundy
@@ -842,14 +844,13 @@ fun WineTileCard(
                 overflow = TextOverflow.Ellipsis
             )
 
-            // Producer / Varietal / Origin (Optional)
+            // Producer & Origin (Optional)
             val origin = listOfNotNull(
                 wine.country?.let { "${CountryHelper.getFlagForCountry(it)} $it" },
                 wine.region
             ).joinToString(" • ")
             val subtitle = listOfNotNull(
                 wine.producer,
-                wine.varietal,
                 origin.ifBlank { null }
             ).joinToString(" • ").ifBlank { "Wine entry" }
 
@@ -860,6 +861,16 @@ fun WineTileCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+
+            // Grape / Varietal Badges
+            if (wine.varietalList.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(3.dp))
+                GrapeBadgesRow(
+                    grapes = wine.varietalList,
+                    maxBadges = 2,
+                    modifier = Modifier.testTag("wine_grapes_${wine.id}")
+                )
+            }
 
             Spacer(modifier = Modifier.height(4.dp))
 
@@ -992,7 +1003,7 @@ fun WineTableRowCard(
                 ).joinToString(", ")
                 val subtitle = listOfNotNull(
                     "${wine.vintage}",
-                    wine.producer ?: wine.varietal,
+                    wine.producer,
                     origin.ifBlank { null }
                 ).joinToString(" • ")
                 Text(
@@ -1002,6 +1013,15 @@ fun WineTableRowCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                // Grape / Varietal Badges
+                if (wine.varietalList.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    GrapeBadgesRow(
+                        grapes = wine.varietalList,
+                        maxBadges = 2,
+                        modifier = Modifier.testTag("table_wine_grapes_${wine.id}")
+                    )
+                }
             }
 
             // Location

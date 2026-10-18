@@ -118,6 +118,7 @@ fun MainScreen(repository: WineRepository) {
     val isLoadingMoreSuppliers by repository.isLoadingMoreSuppliers.collectAsState()
 
     val isLocationsRefreshing by repository.isLocationsRefreshing.collectAsState()
+    val knownGrapes by repository.knownGrapes.collectAsState()
 
     var activeTab by remember { mutableStateOf(MainNavigationTab.WINES) }
     var currentScreen by remember { mutableStateOf<ScreenState>(ScreenState.Main) }
@@ -133,6 +134,8 @@ fun MainScreen(repository: WineRepository) {
                 cellarLocations = locations,
                 suppliers = suppliers,
                 existingWines = wines,
+                knownGrapes = knownGrapes,
+                onRegisterGrape = { grape -> repository.registerGrape(grape) },
                 isPriceTierEnabled = isPriceTierEnabled,
                 onWineCreated = { newWine ->
                     scope.launch {
@@ -161,6 +164,8 @@ fun MainScreen(repository: WineRepository) {
                     locations = locations,
                     suppliers = suppliers,
                     allWines = wines,
+                    knownGrapes = knownGrapes,
+                    onRegisterGrape = { grape -> repository.registerGrape(grape) },
                     isPriceTierEnabled = isPriceTierEnabled,
                     onSaveWine = { updatedWine ->
                         scope.launch {

@@ -85,6 +85,7 @@ import org.librecellar.data.model.WineType
 import org.librecellar.ui.cellar.AddLocationDialog
 import org.librecellar.ui.components.BarcodeScannerDialog
 import org.librecellar.ui.components.CountryDropdownSelect
+import org.librecellar.ui.components.GrapeTagInput
 import org.librecellar.ui.components.PhotoCaptureDialog
 import org.librecellar.ui.components.RatingBar
 import org.librecellar.ui.suppliers.AddSupplierDialog
@@ -251,6 +252,8 @@ fun AddWineWizardScreen(
     cellarLocations: List<CellarLocation>,
     suppliers: List<Supplier>,
     existingWines: List<Wine> = emptyList(),
+    knownGrapes: List<String> = emptyList(),
+    onRegisterGrape: (String) -> Unit = {},
     isPriceTierEnabled: Boolean = true,
     onWineCreated: (Wine) -> Unit,
     onAddLocation: (CellarLocation) -> Unit,
@@ -267,7 +270,7 @@ fun AddWineWizardScreen(
     }
     var country by remember { mutableStateOf("") }
     var region by remember { mutableStateOf("") }
-    var varietal by remember { mutableStateOf("") }
+    var selectedGrapes by remember { mutableStateOf<List<String>>(emptyList()) }
     var producer by remember { mutableStateOf("") }
     var purchaseDate by remember { mutableStateOf("") }
     var alcoholText by remember { mutableStateOf("") }
@@ -286,6 +289,10 @@ fun AddWineWizardScreen(
         (existingWines.mapNotNull { it.country } + suppliers.mapNotNull { it.country })
             .filter { it.isNotBlank() }
             .toSet()
+    }
+
+    val usedGrapes = remember(existingWines) {
+        existingWines.flatMap { it.varietalList }.map { it.trim() }.filter { it.isNotBlank() }.toSet()
     }
 
     // Location Assignment State
@@ -317,7 +324,7 @@ fun AddWineWizardScreen(
             vintage = vintage,
             country = country.ifBlank { null },
             region = region.ifBlank { null },
-            varietal = varietal.ifBlank { null },
+            varietal = selectedGrapes.joinToString(", ").ifBlank { null },
             producer = producer.ifBlank { null },
             purchaseDate = purchaseDate.ifBlank { null },
             alcoholPercent = alc,
@@ -600,8 +607,11 @@ fun AddWineWizardScreen(
                                         region = region,
                                         onRegionChange = { region = it },
                                         assignedCountries = assignedCountries,
-                                        varietal = varietal,
-                                        onVarietalChange = { varietal = it },
+                                        selectedGrapes = selectedGrapes,
+                                        onGrapesChange = { selectedGrapes = it },
+                                        availableGrapes = knownGrapes,
+                                        usedGrapes = usedGrapes,
+                                        onNewGrapeEntered = onRegisterGrape,
                                         producer = producer,
                                         onProducerChange = { producer = it },
                                         sizeText = sizeText,
@@ -665,8 +675,11 @@ fun AddWineWizardScreen(
                         region = region,
                         onRegionChange = { region = it },
                         assignedCountries = assignedCountries,
-                        varietal = varietal,
-                        onVarietalChange = { varietal = it },
+                        selectedGrapes = selectedGrapes,
+                        onGrapesChange = { selectedGrapes = it },
+                        availableGrapes = knownGrapes,
+                        usedGrapes = usedGrapes,
+                        onNewGrapeEntered = onRegisterGrape,
                         producer = producer,
                         onProducerChange = { producer = it },
                         purchaseDate = purchaseDate,
@@ -1012,8 +1025,11 @@ fun WizardStepDetails(
     region: String,
     onRegionChange: (String) -> Unit,
     assignedCountries: Set<String> = emptySet(),
-    varietal: String,
-    onVarietalChange: (String) -> Unit,
+    selectedGrapes: List<String>,
+    onGrapesChange: (List<String>) -> Unit,
+    availableGrapes: List<String> = emptyList(),
+    usedGrapes: Set<String> = emptySet(),
+    onNewGrapeEntered: (String) -> Unit = {},
     producer: String,
     onProducerChange: (String) -> Unit,
     sizeText: String,
@@ -1131,28 +1147,29 @@ fun WizardStepDetails(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Producer & Varietal
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(
-                    value = producer,
-                    onValueChange = onProducerChange,
-                    label = { Text("Producer / Estate") },
-                    placeholder = { Text("e.g. Antinori") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-                OutlinedTextField(
-                    value = varietal,
-                    onValueChange = onVarietalChange,
-                    label = { Text("Varietal / Grape") },
-                    placeholder = { Text("e.g. Pinot Noir") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            // Producer / Estate
+            OutlinedTextField(
+                value = producer,
+                onValueChange = onProducerChange,
+                label = { Text("Producer / Estate") },
+                placeholder = { Text("e.g. Antinori") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Varietal / Grape Tags with Autocomplete Dropdown
+            GrapeTagInput(
+                selectedGrapes = selectedGrapes,
+                onGrapesChange = onGrapesChange,
+                availableGrapes = availableGrapes,
+                usedGrapes = usedGrapes,
+                onNewGrapeEntered = onNewGrapeEntered,
+                label = "Varietal / Grape Blend",
+                placeholder = "Type to search or add grape...",
+                testTag = "wizard_grape_tag_input"
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -1571,8 +1588,11 @@ fun ManualWineEntryForm(
     region: String,
     onRegionChange: (String) -> Unit,
     assignedCountries: Set<String> = emptySet(),
-    varietal: String,
-    onVarietalChange: (String) -> Unit,
+    selectedGrapes: List<String>,
+    onGrapesChange: (List<String>) -> Unit,
+    availableGrapes: List<String> = emptyList(),
+    usedGrapes: Set<String> = emptySet(),
+    onNewGrapeEntered: (String) -> Unit = {},
     producer: String,
     onProducerChange: (String) -> Unit,
     purchaseDate: String,
@@ -1683,24 +1703,29 @@ fun ManualWineEntryForm(
             )
         }
 
-        // Producer & Varietal
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedTextField(
-                value = producer,
-                onValueChange = onProducerChange,
-                label = { Text("Producer") },
-                modifier = Modifier.weight(1f)
-            )
-            OutlinedTextField(
-                value = varietal,
-                onValueChange = onVarietalChange,
-                label = { Text("Varietal") },
-                modifier = Modifier.weight(1f)
-            )
-        }
+        // Producer
+        OutlinedTextField(
+            value = producer,
+            onValueChange = onProducerChange,
+            label = { Text("Producer") },
+            placeholder = { Text("e.g. Domaine de la Romanée-Conti") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Varietal / Grape Tags with Autocomplete Dropdown
+        GrapeTagInput(
+            selectedGrapes = selectedGrapes,
+            onGrapesChange = onGrapesChange,
+            availableGrapes = availableGrapes,
+            usedGrapes = usedGrapes,
+            onNewGrapeEntered = onNewGrapeEntered,
+            label = "Varietal / Grape Blend",
+            placeholder = "Type to search or add grape...",
+            testTag = "manual_grape_tag_input"
+        )
 
         // Country Dropdown & Region (Split into 2 fields)
         Row(
