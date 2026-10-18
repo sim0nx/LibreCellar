@@ -83,6 +83,36 @@ class WineRepository(private val context: Context) {
     private val _suppliers = MutableStateFlow<List<Supplier>>(SampleData.suppliers)
     val suppliers: StateFlow<List<Supplier>> = _suppliers.asStateFlow()
 
+    // Pagination & Pull-down Sync State for Wines (Page limit 20, backend reference)
+    private val _wineCurrentPage = MutableStateFlow(1)
+    val wineCurrentPage: StateFlow<Int> = _wineCurrentPage.asStateFlow()
+
+    private val _hasMoreWines = MutableStateFlow(true)
+    val hasMoreWines: StateFlow<Boolean> = _hasMoreWines.asStateFlow()
+
+    private val _isLoadingMoreWines = MutableStateFlow(false)
+    val isLoadingMoreWines: StateFlow<Boolean> = _isLoadingMoreWines.asStateFlow()
+
+    private val _isWinesRefreshing = MutableStateFlow(false)
+    val isWinesRefreshing: StateFlow<Boolean> = _isWinesRefreshing.asStateFlow()
+
+    // Pagination & Pull-down Sync State for Suppliers/Merchants (Page limit 20, backend reference)
+    private val _supplierCurrentPage = MutableStateFlow(1)
+    val supplierCurrentPage: StateFlow<Int> = _supplierCurrentPage.asStateFlow()
+
+    private val _hasMoreSuppliers = MutableStateFlow(true)
+    val hasMoreSuppliers: StateFlow<Boolean> = _hasMoreSuppliers.asStateFlow()
+
+    private val _isLoadingMoreSuppliers = MutableStateFlow(false)
+    val isLoadingMoreSuppliers: StateFlow<Boolean> = _isLoadingMoreSuppliers.asStateFlow()
+
+    private val _isSuppliersRefreshing = MutableStateFlow(false)
+    val isSuppliersRefreshing: StateFlow<Boolean> = _isSuppliersRefreshing.asStateFlow()
+
+    // Pull-down Sync State for Cellar Locations / Racks (limit 20, backend reference)
+    private val _isLocationsRefreshing = MutableStateFlow(false)
+    val isLocationsRefreshing: StateFlow<Boolean> = _isLocationsRefreshing.asStateFlow()
+
     // Price Tier Marking setting (enabled by default)
     private val _isPriceTierMarkingEnabled = MutableStateFlow(
         prefs.getBoolean("wine_price_tier_marking", true)
@@ -423,6 +453,168 @@ class WineRepository(private val context: Context) {
             }
         } catch (e: Exception) {
             Log.e("WineRepository", "Error syncing with backend", e)
+        }
+    }
+
+    /**
+     * Pull-down sync for Wines: resets to page 1, queries backend as source of truth.
+     */
+    suspend fun refreshWines() = withContext(Dispatchers.IO) {
+        _isWinesRefreshing.value = true
+        try {
+            _wineCurrentPage.value = 1
+            if (_isBackendOnline.value) {
+                val resp = apiService.getWines(page = 1, limit = 20)
+                if (resp.isSuccessful) {
+                    val items = resp.body().orEmpty()
+                    _wines.value = items
+                    _hasMoreWines.value = (items.size >= 20)
+                }
+            } else {
+                // If offline, attempt quick connection check and refresh
+                val health = apiService.checkHealth()
+                if (health.isSuccessful) {
+                    val resp = apiService.getWines(page = 1, limit = 20)
+                    if (resp.isSuccessful) {
+                        _isBackendOnline.value = true
+                        val items = resp.body().orEmpty()
+                        _wines.value = items
+                        _hasMoreWines.value = (items.size >= 20)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("WineRepository", "Error refreshing wines", e)
+        } finally {
+            _isWinesRefreshing.value = false
+        }
+    }
+
+    /**
+     * Loads next batch of 20 wines from backend as user scrolls.
+     */
+    suspend fun loadNextWinePage() = withContext(Dispatchers.IO) {
+        if (_isLoadingMoreWines.value || !_hasMoreWines.value) return@withContext
+        _isLoadingMoreWines.value = true
+        try {
+            val nextPage = _wineCurrentPage.value + 1
+            if (_isBackendOnline.value) {
+                val resp = apiService.getWines(page = nextPage, limit = 20)
+                if (resp.isSuccessful) {
+                    val newBatch = resp.body().orEmpty()
+                    if (newBatch.isNotEmpty()) {
+                        val existingIds = _wines.value.map { it.id }.toSet()
+                        _wines.value = _wines.value + newBatch.filter { it.id !in existingIds }
+                        _wineCurrentPage.value = nextPage
+                        _hasMoreWines.value = (newBatch.size >= 20)
+                    } else {
+                        _hasMoreWines.value = false
+                    }
+                } else {
+                    _hasMoreWines.value = false
+                }
+            } else {
+                _hasMoreWines.value = false
+            }
+        } catch (e: Exception) {
+            Log.e("WineRepository", "Error loading next wine page", e)
+        } finally {
+            _isLoadingMoreWines.value = false
+        }
+    }
+
+    /**
+     * Pull-down sync for Merchants/Suppliers: resets to page 1, queries backend as source of truth.
+     */
+    suspend fun refreshSuppliers() = withContext(Dispatchers.IO) {
+        _isSuppliersRefreshing.value = true
+        try {
+            _supplierCurrentPage.value = 1
+            if (_isBackendOnline.value) {
+                val resp = apiService.getSuppliers(page = 1, limit = 20)
+                if (resp.isSuccessful) {
+                    val items = resp.body().orEmpty()
+                    _suppliers.value = items
+                    _hasMoreSuppliers.value = (items.size >= 20)
+                }
+            } else {
+                val health = apiService.checkHealth()
+                if (health.isSuccessful) {
+                    val resp = apiService.getSuppliers(page = 1, limit = 20)
+                    if (resp.isSuccessful) {
+                        _isBackendOnline.value = true
+                        val items = resp.body().orEmpty()
+                        _suppliers.value = items
+                        _hasMoreSuppliers.value = (items.size >= 20)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("WineRepository", "Error refreshing suppliers", e)
+        } finally {
+            _isSuppliersRefreshing.value = false
+        }
+    }
+
+    /**
+     * Loads next batch of 20 suppliers from backend as user scrolls.
+     */
+    suspend fun loadNextSupplierPage() = withContext(Dispatchers.IO) {
+        if (_isLoadingMoreSuppliers.value || !_hasMoreSuppliers.value) return@withContext
+        _isLoadingMoreSuppliers.value = true
+        try {
+            val nextPage = _supplierCurrentPage.value + 1
+            if (_isBackendOnline.value) {
+                val resp = apiService.getSuppliers(page = nextPage, limit = 20)
+                if (resp.isSuccessful) {
+                    val newBatch = resp.body().orEmpty()
+                    if (newBatch.isNotEmpty()) {
+                        val existingIds = _suppliers.value.map { it.id }.toSet()
+                        _suppliers.value = _suppliers.value + newBatch.filter { it.id !in existingIds }
+                        _supplierCurrentPage.value = nextPage
+                        _hasMoreSuppliers.value = (newBatch.size >= 20)
+                    } else {
+                        _hasMoreSuppliers.value = false
+                    }
+                } else {
+                    _hasMoreSuppliers.value = false
+                }
+            } else {
+                _hasMoreSuppliers.value = false
+            }
+        } catch (e: Exception) {
+            Log.e("WineRepository", "Error loading next supplier page", e)
+        } finally {
+            _isLoadingMoreSuppliers.value = false
+        }
+    }
+
+    /**
+     * Pull-down sync for Cellar Locations / Racks: queries backend as source of truth.
+     */
+    suspend fun refreshLocations() = withContext(Dispatchers.IO) {
+        _isLocationsRefreshing.value = true
+        try {
+            if (_isBackendOnline.value) {
+                val resp = apiService.getCellarLocations(page = 1, limit = 20)
+                if (resp.isSuccessful) {
+                    val items = resp.body().orEmpty()
+                    _locations.value = items
+                }
+            } else {
+                val health = apiService.checkHealth()
+                if (health.isSuccessful) {
+                    _isBackendOnline.value = true
+                    val resp = apiService.getCellarLocations(page = 1, limit = 20)
+                    if (resp.isSuccessful) {
+                        _locations.value = resp.body().orEmpty()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("WineRepository", "Error refreshing cellar locations", e)
+        } finally {
+            _isLocationsRefreshing.value = false
         }
     }
 

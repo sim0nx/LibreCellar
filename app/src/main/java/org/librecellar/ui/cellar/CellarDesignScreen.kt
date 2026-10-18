@@ -29,9 +29,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Grain
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.filled.WineBar
@@ -42,9 +44,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -90,6 +95,7 @@ import org.librecellar.ui.theme.WineRose
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CellarDesignScreen(
     locations: List<CellarLocation>,
@@ -98,7 +104,9 @@ fun CellarDesignScreen(
     onUpdateLocation: (CellarLocation) -> Unit,
     onDeleteLocation: (String) -> Unit,
     onAssignSlot: (wineId: String, locationId: String?, row: Int?, col: Int?) -> Unit,
-    onWineSelected: (Wine) -> Unit
+    onWineSelected: (Wine) -> Unit,
+    isRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {}
 ) {
     var selectedLocationId by remember(locations) {
         mutableStateOf(locations.firstOrNull()?.id ?: "")
@@ -131,13 +139,64 @@ fun CellarDesignScreen(
             }
         }
     ) { paddingValues ->
-        Column(
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp)
         ) {
-            // Header Title
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
+            ) {
+                // Pull-down Sync & Status Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp, bottom = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.CloudSync,
+                            contentDescription = null,
+                            tint = CellarGold,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isRefreshing) "Syncing racks from backend..." else "Pull down to sync racks with backend",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(
+                        onClick = onRefresh,
+                        modifier = Modifier
+                            .size(28.dp)
+                            .testTag("refresh_cellar_btn")
+                    ) {
+                        if (isRefreshing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = CellarGold
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Sync",
+                                tint = CellarGold,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Header Title
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -590,6 +649,7 @@ fun CellarDesignScreen(
                 }
             }
         }
+    }
     }
 
     // --- Dialogs ---

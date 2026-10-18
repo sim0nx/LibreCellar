@@ -10,12 +10,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
@@ -105,6 +108,16 @@ fun MainScreen(repository: WineRepository) {
     val isOnline by repository.isBackendOnline.collectAsState()
     val backendUrl by repository.backendUrl.collectAsState()
     val isPriceTierEnabled by repository.isPriceTierMarkingEnabled.collectAsState()
+
+    val isWinesRefreshing by repository.isWinesRefreshing.collectAsState()
+    val hasMoreWines by repository.hasMoreWines.collectAsState()
+    val isLoadingMoreWines by repository.isLoadingMoreWines.collectAsState()
+
+    val isSuppliersRefreshing by repository.isSuppliersRefreshing.collectAsState()
+    val hasMoreSuppliers by repository.hasMoreSuppliers.collectAsState()
+    val isLoadingMoreSuppliers by repository.isLoadingMoreSuppliers.collectAsState()
+
+    val isLocationsRefreshing by repository.isLocationsRefreshing.collectAsState()
 
     var activeTab by remember { mutableStateOf(MainNavigationTab.WINES) }
     var currentScreen by remember { mutableStateOf<ScreenState>(ScreenState.Main) }
@@ -200,20 +213,27 @@ fun MainScreen(repository: WineRepository) {
         }
 
         ScreenState.Main -> {
+            val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+            val topBarPadding = maxOf(statusBarTop, 28.dp)
+
             Scaffold(
                 topBar = {
                     Surface(
                         color = WineBurgundyDark,
                         tonalElevation = 4.dp
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                        Column(
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Spacer(modifier = Modifier.height(topBarPadding))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
                                     modifier = Modifier
                                         .size(34.dp)
@@ -279,6 +299,7 @@ fun MainScreen(repository: WineRepository) {
                                         modifier = Modifier.size(14.dp)
                                     )
                                 }
+                            }
                             }
                         }
                     }
@@ -399,7 +420,12 @@ fun MainScreen(repository: WineRepository) {
                                 onAddWineClick = { currentScreen = ScreenState.AddWine },
                                 onDecrementQuantity = { wineId ->
                                     scope.launch { repository.decrementQuantity(wineId) }
-                                }
+                                },
+                                isRefreshing = isWinesRefreshing,
+                                onRefresh = { scope.launch { repository.refreshWines() } },
+                                hasMoreWines = hasMoreWines,
+                                isLoadingMore = isLoadingMoreWines,
+                                onLoadMore = { scope.launch { repository.loadNextWinePage() } }
                             )
                         }
 
@@ -421,7 +447,9 @@ fun MainScreen(repository: WineRepository) {
                                 },
                                 onWineSelected = { selected ->
                                     currentScreen = ScreenState.WineDetail(selected.id)
-                                }
+                                },
+                                isRefreshing = isLocationsRefreshing,
+                                onRefresh = { scope.launch { repository.refreshLocations() } }
                             )
                         }
 
@@ -450,7 +478,12 @@ fun MainScreen(repository: WineRepository) {
                                 },
                                 onDeleteSupplier = { supId ->
                                     scope.launch { repository.deleteSupplier(supId) }
-                                }
+                                },
+                                isRefreshing = isSuppliersRefreshing,
+                                onRefresh = { scope.launch { repository.refreshSuppliers() } },
+                                hasMoreSuppliers = hasMoreSuppliers,
+                                isLoadingMore = isLoadingMoreSuppliers,
+                                onLoadMore = { scope.launch { repository.loadNextSupplierPage() } }
                             )
                         }
 

@@ -54,6 +54,16 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -115,9 +125,45 @@ fun WineListScreen(
     isPriceTierEnabled: Boolean = true,
     onWineSelected: (Wine) -> Unit,
     onAddWineClick: () -> Unit,
-    onDecrementQuantity: (String) -> Unit
+    onDecrementQuantity: (String) -> Unit,
+    isRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {},
+    hasMoreWines: Boolean = false,
+    isLoadingMore: Boolean = false,
+    onLoadMore: () -> Unit = {}
 ) {
     var viewMode by remember { mutableStateOf(ViewDisplayMode.TILE) }
+    val gridState = rememberLazyGridState()
+    val tableListState = rememberLazyListState()
+
+    // Continuous infinite scrolling / incremental pagination live from backend
+    val shouldLoadMoreGrid by remember {
+        derivedStateOf {
+            val totalItems = gridState.layoutInfo.totalItemsCount
+            if (totalItems == 0) return@derivedStateOf false
+            val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull() ?: return@derivedStateOf false
+            lastVisible.index >= totalItems - 4
+        }
+    }
+    LaunchedEffect(shouldLoadMoreGrid, hasMoreWines, isLoadingMore) {
+        if (shouldLoadMoreGrid && hasMoreWines && !isLoadingMore) {
+            onLoadMore()
+        }
+    }
+
+    val shouldLoadMoreTable by remember {
+        derivedStateOf {
+            val totalItems = tableListState.layoutInfo.totalItemsCount
+            if (totalItems == 0) return@derivedStateOf false
+            val lastVisible = tableListState.layoutInfo.visibleItemsInfo.lastOrNull() ?: return@derivedStateOf false
+            lastVisible.index >= totalItems - 4
+        }
+    }
+    LaunchedEffect(shouldLoadMoreTable, hasMoreWines, isLoadingMore) {
+        if (shouldLoadMoreTable && hasMoreWines && !isLoadingMore) {
+            onLoadMore()
+        }
+    }
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("ALL") }
     var showBarcodeScanner by remember { mutableStateOf(false) }
@@ -193,20 +239,71 @@ fun WineListScreen(
             }
         }
     ) { paddingValues ->
-        Column(
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp)
         ) {
-            // Header Bar
-            Row(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp, bottom = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
             ) {
+                // Pull-down Sync & Status Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp, bottom = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.CloudSync,
+                            contentDescription = null,
+                            tint = org.librecellar.ui.theme.CellarGold,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isRefreshing) "Syncing from backend server..." else "Pull down to sync with backend (limit: 20/page)",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(
+                        onClick = onRefresh,
+                        modifier = Modifier
+                            .size(28.dp)
+                            .testTag("refresh_wines_btn")
+                    ) {
+                        if (isRefreshing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = org.librecellar.ui.theme.CellarGold
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Sync",
+                                tint = org.librecellar.ui.theme.CellarGold,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Header Bar
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp, bottom = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                 Column {
                     Text(
                         text = "Wine Collection",
@@ -472,6 +569,7 @@ fun WineListScreen(
                 when (viewMode) {
                     ViewDisplayMode.TILE -> {
                         LazyVerticalGrid(
+                            state = gridState,
                             columns = GridCells.Adaptive(minSize = 160.dp),
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -493,12 +591,50 @@ fun WineListScreen(
                                     }
                                 )
                             }
+
+                            // Incremental Pagination Footer
+                            if (isLoadingMore) {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            strokeWidth = 2.dp,
+                                            color = org.librecellar.ui.theme.CellarGold
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "Loading next 20 wines from backend...",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            } else if (!hasMoreWines && sortedWines.isNotEmpty()) {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                    Text(
+                                        text = "All ${wines.size} wines loaded",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 12.dp),
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
                         }
                     }
 
                     ViewDisplayMode.TABLE_LIST -> {
                         // Dense Table List View
                         LazyColumn(
+                            state = tableListState,
                             contentPadding = PaddingValues(bottom = 76.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.weight(1f)
@@ -559,12 +695,50 @@ fun WineListScreen(
                                     }
                                 )
                             }
+
+                            // Incremental Pagination Footer
+                            if (isLoadingMore) {
+                                item {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            strokeWidth = 2.dp,
+                                            color = org.librecellar.ui.theme.CellarGold
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "Loading next 20 wines from backend...",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            } else if (!hasMoreWines && sortedWines.isNotEmpty()) {
+                                item {
+                                    Text(
+                                        text = "All ${wines.size} wines loaded",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 12.dp),
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
         }
     }
+}
 
     if (showBarcodeScanner) {
         BarcodeScannerDialog(

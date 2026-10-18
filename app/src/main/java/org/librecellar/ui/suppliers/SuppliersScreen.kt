@@ -40,6 +40,16 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -66,18 +76,41 @@ import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundyLight
 import org.librecellar.ui.theme.WineRose
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SuppliersScreen(
     suppliers: List<Supplier>,
     wines: List<Wine>,
     onAddSupplier: (Supplier) -> Unit,
     onUpdateSupplier: (Supplier) -> Unit,
-    onDeleteSupplier: (String) -> Unit
+    onDeleteSupplier: (String) -> Unit,
+    isRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {},
+    hasMoreSuppliers: Boolean = false,
+    isLoadingMore: Boolean = false,
+    onLoadMore: () -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var showAddDialog by remember { mutableStateOf(false) }
     var supplierToEdit by remember { mutableStateOf<Supplier?>(null) }
     var supplierToDelete by remember { mutableStateOf<Supplier?>(null) }
+
+    val supplierListState = rememberLazyListState()
+
+    // Continuous scroll as you go pagination live from backend
+    val shouldLoadMoreSuppliers by remember {
+        derivedStateOf {
+            val totalItems = supplierListState.layoutInfo.totalItemsCount
+            if (totalItems == 0) return@derivedStateOf false
+            val lastVisible = supplierListState.layoutInfo.visibleItemsInfo.lastOrNull() ?: return@derivedStateOf false
+            lastVisible.index >= totalItems - 3
+        }
+    }
+    LaunchedEffect(shouldLoadMoreSuppliers, hasMoreSuppliers, isLoadingMore) {
+        if (shouldLoadMoreSuppliers && hasMoreSuppliers && !isLoadingMore) {
+            onLoadMore()
+        }
+    }
 
     val assignedCountries = remember(wines, suppliers) {
         (wines.mapNotNull { it.country } + suppliers.mapNotNull { it.country })
@@ -104,19 +137,70 @@ fun SuppliersScreen(
             }
         }
     ) { paddingValues ->
-        Column(
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp)
         ) {
-            // Header
-            Row(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp, bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
             ) {
+                // Pull-down Sync & Status Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp, bottom = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.CloudSync,
+                            contentDescription = null,
+                            tint = CellarGold,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isRefreshing) "Syncing merchants from backend..." else "Pull down to sync with backend (limit: 20/page)",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(
+                        onClick = onRefresh,
+                        modifier = Modifier
+                            .size(28.dp)
+                            .testTag("refresh_suppliers_btn")
+                    ) {
+                        if (isRefreshing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = CellarGold
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Sync",
+                                tint = CellarGold,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                 Icon(
                     imageVector = Icons.Default.Storefront,
                     contentDescription = null,
@@ -178,6 +262,7 @@ fun SuppliersScreen(
                 }
             } else {
                 LazyColumn(
+                    state = supplierListState,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
@@ -339,6 +424,43 @@ fun SuppliersScreen(
                             }
                         }
                     }
+
+                    // Incremental Pagination Footer
+                    if (isLoadingMore) {
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = CellarGold
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Loading next 20 merchants from backend...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else if (!hasMoreSuppliers && suppliers.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "All ${suppliers.size} merchants loaded",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -394,6 +516,7 @@ fun SuppliersScreen(
             }
         )
     }
+}
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
