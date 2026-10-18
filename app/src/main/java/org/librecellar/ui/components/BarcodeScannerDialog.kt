@@ -170,13 +170,10 @@ fun BarcodeScannerDialog(
         }
     }
 
-    val sampleBarcodes = listOf(
-        "3421580001015" to "Château Margaux",
-        "3760128941022" to "Romanée-Conti",
-        "8024508182903" to "Sassicaia",
-        "3185370643210" to "Dom Pérignon",
-        "3419827014521" to "Puligny-Montrachet",
-        "8414436012011" to "Vega Sicilia"
+    val testBarcodes = listOf(
+        "3421580001015" to "Test EAN-13 #1",
+        "8024508182903" to "Test EAN-13 #2",
+        "3185370643210" to "Test UPC-A"
     )
 
     val infiniteTransition = rememberInfiniteTransition(label = "scan_laser_transition")
@@ -502,7 +499,7 @@ fun BarcodeScannerDialog(
 
                 // Quick Tap Barcode Presets (Helpful for emulators & testing)
                 Text(
-                    text = "Or tap a sample wine barcode:",
+                    text = "Or tap a test barcode preset:",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.Start)
@@ -515,7 +512,7 @@ fun BarcodeScannerDialog(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    sampleBarcodes.forEach { (code, wineName) ->
+                    testBarcodes.forEach { (code, labelName) ->
                         SuggestionChip(
                             onClick = {
                                 barcodeText = code
@@ -523,7 +520,7 @@ fun BarcodeScannerDialog(
                             },
                             label = {
                                 Text(
-                                    text = "$wineName ($code)",
+                                    text = "$labelName ($code)",
                                     style = MaterialTheme.typography.labelSmall
                                 )
                             },

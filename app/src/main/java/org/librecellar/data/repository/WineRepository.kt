@@ -3,7 +3,6 @@ package org.librecellar.data.repository
 import android.content.Context
 import android.util.Log
 import org.librecellar.data.api.WineApiService
-import org.librecellar.data.mock.SampleData
 import org.librecellar.data.model.AssignSlotRequest
 import org.librecellar.data.model.CellarLocation
 import org.librecellar.data.model.Supplier
@@ -73,14 +72,14 @@ class WineRepository(private val context: Context) {
     private val _isBackendOnline = MutableStateFlow(false)
     val isBackendOnline: StateFlow<Boolean> = _isBackendOnline.asStateFlow()
 
-    // State flows for UI
-    private val _wines = MutableStateFlow<List<Wine>>(SampleData.wines)
+    // State flows for UI (Initialized empty with no sample data)
+    private val _wines = MutableStateFlow<List<Wine>>(emptyList())
     val wines: StateFlow<List<Wine>> = _wines.asStateFlow()
 
-    private val _locations = MutableStateFlow<List<CellarLocation>>(SampleData.locations)
+    private val _locations = MutableStateFlow<List<CellarLocation>>(emptyList())
     val locations: StateFlow<List<CellarLocation>> = _locations.asStateFlow()
 
-    private val _suppliers = MutableStateFlow<List<Supplier>>(SampleData.suppliers)
+    private val _suppliers = MutableStateFlow<List<Supplier>>(emptyList())
     val suppliers: StateFlow<List<Supplier>> = _suppliers.asStateFlow()
 
     // Pagination & Pull-down Sync State for Wines (Page limit 20, backend reference)
@@ -475,17 +474,12 @@ class WineRepository(private val context: Context) {
 
             // 5. Re-fetch complete merged dataset using pagination (limit 20)
             val updatedWines = fetchAllWinesPaginated(limit = 20)
-            if (updatedWines.isNotEmpty()) {
-                _wines.value = updatedWines
-            }
+            _wines.value = updatedWines
             val updatedLocations = fetchAllLocationsPaginated(limit = 20)
-            if (updatedLocations.isNotEmpty()) {
-                _locations.value = updatedLocations
-            }
+            _locations.value = updatedLocations
             val updatedSuppliers = fetchAllSuppliersPaginated(limit = 20)
-            if (updatedSuppliers.isNotEmpty()) {
-                _suppliers.value = updatedSuppliers
-            }
+            _suppliers.value = updatedSuppliers
+            _knownGrapes.value = computeAllKnownGrapes()
 
             Triple(pushedWinesCount, pushedLocationsCount, pushedSuppliersCount)
         } catch (e: Exception) {
@@ -497,17 +491,12 @@ class WineRepository(private val context: Context) {
     private suspend fun syncFromBackend() = withContext(Dispatchers.IO) {
         try {
             val wines = fetchAllWinesPaginated(limit = 20)
-            if (wines.isNotEmpty()) {
-                _wines.value = wines
-            }
+            _wines.value = wines
             val locations = fetchAllLocationsPaginated(limit = 20)
-            if (locations.isNotEmpty()) {
-                _locations.value = locations
-            }
+            _locations.value = locations
             val suppliers = fetchAllSuppliersPaginated(limit = 20)
-            if (suppliers.isNotEmpty()) {
-                _suppliers.value = suppliers
-            }
+            _suppliers.value = suppliers
+            _knownGrapes.value = computeAllKnownGrapes()
         } catch (e: Exception) {
             Log.e("WineRepository", "Error syncing with backend", e)
         }
@@ -526,6 +515,7 @@ class WineRepository(private val context: Context) {
                     val items = resp.body().orEmpty()
                     _wines.value = items
                     _hasMoreWines.value = (items.size >= 20)
+                    _knownGrapes.value = computeAllKnownGrapes()
                 }
             } else {
                 // If offline, attempt quick connection check and refresh
@@ -537,6 +527,7 @@ class WineRepository(private val context: Context) {
                         val items = resp.body().orEmpty()
                         _wines.value = items
                         _hasMoreWines.value = (items.size >= 20)
+                        _knownGrapes.value = computeAllKnownGrapes()
                     }
                 }
             }
