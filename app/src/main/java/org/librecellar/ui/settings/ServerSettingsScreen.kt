@@ -404,6 +404,77 @@ fun ServerSettingsScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Section 2b: User UUIDv4 Identity & Bottle Image Storage
+                val userUuid by repository.userUuid.collectAsState()
+                val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(imageVector = Icons.Default.Person, contentDescription = null, tint = CellarGold, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "User Identity (UUIDv4)",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Bottle pictures are uploaded to the backend server in a subfolder identified by your UUIDv4, renamed to UUIDv7.<extension>, and cached on your device.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Surface(
+                            color = MaterialTheme.colorScheme.surface,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = userUuid,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = CellarGold,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TextButton(
+                                    onClick = {
+                                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(userUuid))
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("User UUIDv4 copied to clipboard")
+                                        }
+                                    },
+                                    modifier = Modifier.testTag("copy_user_uuid_btn")
+                                ) {
+                                    Text("Copy", fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 // Section 3: Server SSL Certificate Validation Checkbox
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -1327,7 +1398,79 @@ def delete_supplier(id: str, user: str = Depends(authenticate), db: Session = De
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
+# --- Bottle Pictures API (User UUIDv4 subfolder & UUIDv7 naming) ---
+import os, time, uuid
+from fastapi import UploadFile, File, Header
+from fastapi.responses import FileResponse
+
+IMAGE_DIR = os.getenv("LIBRECELLAR_IMAGE_DIR", "/path/to/librecellar/data/images")
+
+def generate_uuidv7() -> str:
+    timestamp_ms = int(time.time() * 1000)
+    rand_bytes = os.urandom(10)
+    time_high = timestamp_ms & 0xFFFFFFFFFFFF
+    rand_a = int.from_bytes(rand_bytes[0:2], "big") & 0x0FFF
+    rand_b = int.from_bytes(rand_bytes[2:10], "big") & 0x3FFFFFFFFFFFFFFF
+    msb = (time_high << 16) | (0x7 << 12) | rand_a
+    lsb = (0x2 << 62) | rand_b
+    return str(uuid.UUID(int=(msb << 64) | lsb))
+
+@app.post("/api/images/upload")
+async def upload_image(
+    file: UploadFile = File(...),
+    user_id: str = Header(..., alias="X-User-Id"),
+    user: str = Depends(authenticate)
+):
+    user_folder = os.path.join(IMAGE_DIR, user_id)
+    os.makedirs(user_folder, exist_ok=True)
+    ext = os.path.splitext(file.filename)[1].lower() if file.filename else ".jpg"
+    if not ext:
+        ext = ".jpg"
+    filename = f"{generate_uuidv7()}{ext}"
+    dest_path = os.path.join(user_folder, filename)
+    with open(dest_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+    return {"filename": filename, "user_id": user_id, "url": f"/api/images/{filename}"}
+
+@app.get("/api/images/{filename}")
+def get_image(
+    filename: str,
+    user_id: Optional[str] = Header(None, alias="X-User-Id"),
+    user: str = Depends(authenticate)
+):
+    if user_id:
+        file_path = os.path.join(IMAGE_DIR, user_id, filename)
+        if os.path.exists(file_path):
+            return FileResponse(file_path)
+    if os.path.exists(IMAGE_DIR):
+        for sub in os.listdir(IMAGE_DIR):
+            candidate = os.path.join(IMAGE_DIR, sub, filename)
+            if os.path.exists(candidate) and os.path.isfile(candidate):
+                return FileResponse(candidate)
+    raise HTTPException(status_code=404, detail="Image not found")
+
+@app.delete("/api/images/{filename}", status_code=204)
+def delete_image(
+    filename: str,
+    user_id: Optional[str] = Header(None, alias="X-User-Id"),
+    user: str = Depends(authenticate)
+):
+    if user_id:
+        file_path = os.path.join(IMAGE_DIR, user_id, filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
+    if os.path.exists(IMAGE_DIR):
+        for sub in os.listdir(IMAGE_DIR):
+            candidate = os.path.join(IMAGE_DIR, sub, filename)
+            if os.path.exists(candidate) and os.path.isfile(candidate):
+                os.remove(candidate)
+                return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 """.trimIndent()
 }
+

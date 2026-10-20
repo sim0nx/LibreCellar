@@ -88,6 +88,7 @@ import org.librecellar.ui.components.CountryDropdownSelect
 import org.librecellar.ui.components.GrapeTagInput
 import org.librecellar.ui.components.PhotoCaptureDialog
 import org.librecellar.ui.components.RatingBar
+import org.librecellar.ui.components.WineBottleImage
 import org.librecellar.ui.suppliers.AddSupplierDialog
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundy
@@ -918,58 +919,71 @@ fun WizardStepPhoto(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Capture or select a photo of the bottle label to visually identify it in the cellar.",
+                text = "Take a picture or select one from your device to visually identify the bottle in your cellar.",
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Photo Preview or Placeholder
             Box(
                 modifier = Modifier
-                    .size(160.dp)
+                    .size(180.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .border(2.dp, CellarGold.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                    .border(2.dp, CellarGold.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
                     .clickable { onPhotoClick() },
                 contentAlignment = Alignment.Center
             ) {
-                if (photoUrl != null) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(12.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.WineBar,
-                            contentDescription = null,
-                            tint = CellarGold,
-                            modifier = Modifier.size(52.dp)
+                if (!photoUrl.isNullOrBlank()) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        WineBottleImage(
+                            photoUrl = photoUrl,
+                            wineType = "RED",
+                            modifier = Modifier.fillMaxSize(),
+                            shape = RoundedCornerShape(14.dp)
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "Photo Selected",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = CellarGold
-                        )
-                        TextButton(onClick = onClearPhoto) {
-                            Text("Remove", color = WineRose, fontSize = 11.sp)
+                        IconButton(
+                            onClick = onClearPhoto,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(6.dp)
+                                .size(32.dp)
+                                .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                                .testTag("clear_photo_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Remove photo",
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
                         }
                     }
                 } else {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(16.dp)
+                    ) {
                         Icon(
                             imageVector = Icons.Default.CameraAlt,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(40.dp)
+                            tint = CellarGold.copy(alpha = 0.8f),
+                            modifier = Modifier.size(48.dp)
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Tap to choose photo",
+                            text = "Tap to Take / Select Photo",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Camera or Device Photos",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -977,16 +991,20 @@ fun WizardStepPhoto(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
             Button(
                 onClick = onPhotoClick,
                 colors = ButtonDefaults.buttonColors(containerColor = WineBurgundyLight),
-                modifier = Modifier.testTag("wizard_pick_photo_button")
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp)
+                    .testTag("wizard_pick_photo_button")
             ) {
-                Icon(imageVector = Icons.Default.CameraAlt, contentDescription = null)
+                Icon(imageVector = Icons.Default.CameraAlt, contentDescription = null, tint = CellarGold)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(if (photoUrl == null) "Select / Take Photo" else "Change Photo")
+                Text(if (photoUrl == null) "Take Photo or Select" else "Change Bottle Photo")
             }
         }
 
@@ -1818,18 +1836,31 @@ fun ManualWineEntryForm(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text("Bottle Photo", style = MaterialTheme.typography.bodyMedium)
-                Text(
-                    text = if (photoUrl != null) "Photo attached" else "No photo selected",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (!photoUrl.isNullOrBlank()) {
+                    WineBottleImage(
+                        photoUrl = photoUrl,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        shape = RoundedCornerShape(8.dp),
+                        iconSize = 24.dp
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                }
+                Column {
+                    Text("Bottle Photo", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        text = if (!photoUrl.isNullOrBlank()) "Photo attached" else "No photo selected",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             OutlinedButton(onClick = onPhotoClick) {
                 Icon(imageVector = Icons.Default.CameraAlt, contentDescription = null, tint = CellarGold)
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(if (photoUrl != null) "Change Photo" else "Add Photo")
+                Text(if (!photoUrl.isNullOrBlank()) "Change Photo" else "Add Photo")
             }
         }
 

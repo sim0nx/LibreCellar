@@ -68,10 +68,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.librecellar.data.model.CellarLocation
 import org.librecellar.data.model.CountryHelper
+import androidx.compose.ui.layout.ContentScale
 import org.librecellar.data.model.Wine
 import org.librecellar.ui.components.GrapeBadge
 import org.librecellar.ui.components.GrapeBadgesFlow
 import org.librecellar.ui.components.RatingBar
+import org.librecellar.ui.components.WineBottleImage
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundy
 import org.librecellar.ui.theme.WineBurgundyLight
@@ -153,20 +155,42 @@ fun WineDetailScreen(
                     modifier = Modifier.padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(90.dp)
-                            .clip(CircleShape)
-                            .background(WineBurgundy)
-                            .border(2.dp, CellarGold, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.WineBar,
-                            contentDescription = null,
-                            tint = CellarGold,
-                            modifier = Modifier.size(50.dp)
-                        )
+                    if (!wine.photoUrl.isNullOrBlank()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(220.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFF1E1418))
+                                .border(1.5.dp, CellarGold.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            WineBottleImage(
+                                photoUrl = wine.photoUrl,
+                                wineType = wine.wineType,
+                                modifier = Modifier.fillMaxSize(),
+                                shape = RoundedCornerShape(12.dp),
+                                contentScale = ContentScale.Fit,
+                                iconSize = 64.dp,
+                                contentDescription = "${wine.name} bottle photo"
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(90.dp)
+                                .clip(CircleShape)
+                                .background(WineBurgundy)
+                                .border(2.dp, CellarGold, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.WineBar,
+                                contentDescription = null,
+                                tint = CellarGold,
+                                modifier = Modifier.size(50.dp)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(14.dp))

@@ -1,12 +1,15 @@
 package org.librecellar.data.repository
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
+import java.io.File
 import org.librecellar.data.api.WineApiService
 import org.librecellar.data.model.AssignSlotRequest
 import org.librecellar.data.model.CellarLocation
 import org.librecellar.data.model.Supplier
 import org.librecellar.data.model.Wine
+import org.librecellar.ui.components.WineImageHelper
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.CoroutineScope
@@ -71,6 +74,10 @@ class WineRepository(private val context: Context) {
 
     private val _isBackendOnline = MutableStateFlow(false)
     val isBackendOnline: StateFlow<Boolean> = _isBackendOnline.asStateFlow()
+
+    // Persistent User UUIDv4 identifying this user
+    private val _userUuid = MutableStateFlow(WineImageHelper.getUserUuid(context))
+    val userUuid: StateFlow<String> = _userUuid.asStateFlow()
 
     // State flows for UI (Initialized empty with no sample data)
     private val _wines = MutableStateFlow<List<Wine>>(emptyList())
@@ -217,15 +224,15 @@ class WineRepository(private val context: Context) {
             .readTimeout(5, TimeUnit.SECONDS)
             .addInterceptor(logging)
 
-        // Attach Basic Auth header if credentials are provided
-        if (user.isNotBlank()) {
-            clientBuilder.addInterceptor { chain ->
+        // Attach User ID (UUIDv4) and Basic Auth headers
+        clientBuilder.addInterceptor { chain ->
+            val requestBuilder = chain.request().newBuilder()
+                .header("X-User-Id", _userUuid.value)
+            if (user.isNotBlank()) {
                 val authHeader = Credentials.basic(user.trim(), pass)
-                val newRequest = chain.request().newBuilder()
-                    .header("Authorization", authHeader)
-                    .build()
-                chain.proceed(newRequest)
+                requestBuilder.header("Authorization", authHeader)
             }
+            chain.proceed(requestBuilder.build())
         }
 
         // Handle SSL certificate validation toggle
@@ -666,12 +673,70 @@ class WineRepository(private val context: Context) {
         }
     }
 
+    /**
+     * Uploads a bottle picture to the backend API.
+     * Stores image on backend in configurable path under the user's UUIDv4 subfolder,
+     * renamed to UUIDv7.<ext>.
+     * Only the filename is returned and saved in backend DB.
+     */
+    suspend fun uploadBottleImage(pathOrUri: String): String = withContext(Dispatchers.IO) {
+        if (pathOrUri.isBlank() || WineImageHelper.isPreset(pathOrUri)) {
+            return@withContext pathOrUri
+        }
+        val sourceFile = if (pathOrUri.startsWith("content://")) {
+            val (cachedFile, _) = WineImageHelper.saveUriToLocalCache(context, Uri.parse(pathOrUri))
+            cachedFile
+        } else {
+            val f = File(pathOrUri)
+            if (f.exists()) f else WineImageHelper.getCachedImageFile(context, pathOrUri)
+        }
+
+        if (sourceFile == null || !sourceFile.exists()) {
+            return@withContext pathOrUri
+        }
+
+        WineImageHelper.uploadImageToBackend(
+            context = context,
+            apiService = apiService,
+            userUuid = _userUuid.value,
+            sourceFile = sourceFile
+        )
+    }
+
+    /**
+     * Requests a bottle picture from the backend API if not available in local cache.
+     * When requested, caches it into the Android device's local bottle_cache folder.
+     */
+    suspend fun getOrFetchCachedImage(filename: String): File? = withContext(Dispatchers.IO) {
+        val cached = WineImageHelper.getCachedImageFile(context, filename)
+        if (cached != null && cached.exists()) {
+            return@withContext cached
+        }
+        if (WineImageHelper.isPreset(filename) || filename.isBlank()) {
+            return@withContext null
+        }
+        WineImageHelper.fetchAndCacheRemoteImage(
+            context = context,
+            filename = filename,
+            apiService = apiService,
+            userUuid = _userUuid.value
+        )
+    }
+
     // --- Wine Operations ---
     suspend fun addWine(wine: Wine): Wine = withContext(Dispatchers.IO) {
         var finalWine = wine
+        val photo = wine.photoUrl
+        if (!photo.isNullOrBlank() && !WineImageHelper.isPreset(photo) &&
+            (photo.startsWith("/") || photo.startsWith("file:") || photo.startsWith("content:"))
+        ) {
+            val uploadedFilename = uploadBottleImage(photo)
+            finalWine = finalWine.copy(photoUrl = uploadedFilename)
+        }
+
         if (_isBackendOnline.value) {
             try {
-                val resp = apiService.createWine(wine)
+                val resp = apiService.createWine(finalWine)
                 if (resp.isSuccessful && resp.body() != null) {
                     finalWine = resp.body()!!
                 }
@@ -687,20 +752,42 @@ class WineRepository(private val context: Context) {
     }
 
     suspend fun updateWine(wine: Wine): Wine = withContext(Dispatchers.IO) {
+        var finalWine = wine
+        val photo = wine.photoUrl
+        if (!photo.isNullOrBlank() && !WineImageHelper.isPreset(photo) &&
+            (photo.startsWith("/") || photo.startsWith("file:") || photo.startsWith("content:"))
+        ) {
+            val uploadedFilename = uploadBottleImage(photo)
+            finalWine = finalWine.copy(photoUrl = uploadedFilename)
+        }
+
         if (_isBackendOnline.value) {
             try {
-                apiService.updateWine(wine.id, wine)
+                apiService.updateWine(finalWine.id, finalWine)
             } catch (e: Exception) {
                 Log.w("WineRepository", "Backend updateWine failed", e)
             }
         }
-        registerGrapes(wine.varietalList)
-        _wines.value = _wines.value.map { if (it.id == wine.id) wine else it }
+        registerGrapes(finalWine.varietalList)
+        _wines.value = _wines.value.map { if (it.id == finalWine.id) finalWine else it }
         _knownGrapes.value = computeAllKnownGrapes()
-        wine
+        finalWine
     }
 
     suspend fun deleteWine(id: String) = withContext(Dispatchers.IO) {
+        val target = _wines.value.find { it.id == id }
+        val photo = target?.photoUrl
+        if (!photo.isNullOrBlank() && !WineImageHelper.isPreset(photo)) {
+            // Removing a wine in the app should remove the cached picture as well on the android device
+            WineImageHelper.removeCachedImage(context, photo)
+            if (_isBackendOnline.value) {
+                try {
+                    apiService.deleteImage(photo, _userUuid.value)
+                } catch (e: Exception) {
+                    Log.w("WineRepository", "Backend deleteImage failed", e)
+                }
+            }
+        }
         if (_isBackendOnline.value) {
             try {
                 apiService.deleteWine(id)
@@ -710,6 +797,7 @@ class WineRepository(private val context: Context) {
         }
         _wines.value = _wines.value.filterNot { it.id == id }
     }
+
 
     suspend fun decrementQuantity(id: String): Int = withContext(Dispatchers.IO) {
         var newQty = 0

@@ -1,19 +1,25 @@
 package org.librecellar.data.api
 
+import okhttp3.MultipartBody
+import okhttp3.ResponseBody
 import org.librecellar.data.model.AssignSlotRequest
 import org.librecellar.data.model.CellarLocation
 import org.librecellar.data.model.DecrementInventoryResponse
+import org.librecellar.data.model.ImageUploadResponse
 import org.librecellar.data.model.Supplier
 import org.librecellar.data.model.Wine
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Header
+import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Part
 import retrofit2.http.Path
-
 import retrofit2.http.Query
+import retrofit2.http.Streaming
 
 interface WineApiService {
 
@@ -98,4 +104,26 @@ interface WineApiService {
     // --- Health check ---
     @GET("api/health")
     suspend fun checkHealth(): Response<Map<String, String>>
+
+    // --- Bottle Images API ---
+    @Multipart
+    @POST("api/images/upload")
+    suspend fun uploadImage(
+        @Part image: MultipartBody.Part,
+        @Header("X-User-Id") userId: String
+    ): Response<ImageUploadResponse>
+
+    @Streaming
+    @GET("api/images/{filename}")
+    suspend fun downloadImage(
+        @Path("filename") filename: String,
+        @Header("X-User-Id") userId: String? = null
+    ): Response<ResponseBody>
+
+    @DELETE("api/images/{filename}")
+    suspend fun deleteImage(
+        @Path("filename") filename: String,
+        @Header("X-User-Id") userId: String? = null
+    ): Response<Unit>
 }
+

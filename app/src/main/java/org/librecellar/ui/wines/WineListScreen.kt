@@ -99,6 +99,7 @@ import org.librecellar.ui.components.BarcodeScannerDialog
 import org.librecellar.ui.components.GrapeBadge
 import org.librecellar.ui.components.GrapeBadgesRow
 import org.librecellar.ui.components.RatingBar
+import org.librecellar.ui.components.WineBottleImage
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundy
 import org.librecellar.ui.theme.WineBurgundyDark
@@ -812,26 +813,17 @@ fun WineTileCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Bottle Thumbnail & Type Indicator
-            Box(
+            WineBottleImage(
+                photoUrl = wine.photoUrl,
+                wineType = wine.wineType,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(60.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFF24161C)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.WineBar,
-                    contentDescription = null,
-                    tint = when (wine.wineType) {
-                        "WHITE" -> Color(0xFFD4C876)
-                        "SPARKLING" -> CellarGold
-                        "ROSE" -> WineRose
-                        else -> WineBurgundyLight
-                    },
-                    modifier = Modifier.size(34.dp)
-                )
-            }
+                    .height(84.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+                shape = RoundedCornerShape(8.dp),
+                iconSize = 38.dp,
+                contentDescription = "${wine.name} bottle photo"
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -988,6 +980,19 @@ fun WineTableRowCard(
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            WineBottleImage(
+                photoUrl = wine.photoUrl,
+                wineType = wine.wineType,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(6.dp)),
+                shape = RoundedCornerShape(6.dp),
+                iconSize = 22.dp,
+                contentDescription = "${wine.name} thumbnail"
+            )
+
+            Spacer(modifier = Modifier.width(10.dp))
+
             // Wine & Vintage
             Column(modifier = Modifier.weight(2f)) {
                 Text(

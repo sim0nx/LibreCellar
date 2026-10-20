@@ -28,6 +28,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
@@ -41,6 +42,8 @@ import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.WineBar
 import org.librecellar.ui.components.BarcodeScannerDialog
+import org.librecellar.ui.components.PhotoCaptureDialog
+import org.librecellar.ui.components.WineBottleImage
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -150,6 +153,7 @@ fun EditWineScreen(
     var barcode by remember(wine) { mutableStateOf(wine.barcode ?: "") }
     var photoUrl by remember(wine) { mutableStateOf(wine.photoUrl ?: "") }
     var showBarcodeScanner by remember { mutableStateOf(false) }
+    var showPhotoDialog by remember { mutableStateOf(false) }
 
     val selectedLocation = locations.find { it.id == selectedLocationId }
 
@@ -788,6 +792,53 @@ fun EditWineScreen(
                             .fillMaxWidth()
                             .testTag("edit_wine_barcode_input")
                     )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Bottle Photo Field
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            WineBottleImage(
+                                photoUrl = photoUrl.ifBlank { null },
+                                wineType = selectedType.name,
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .clip(RoundedCornerShape(8.dp)),
+                                shape = RoundedCornerShape(8.dp),
+                                iconSize = 24.dp
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text("Bottle Photo", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    text = if (photoUrl.isNotBlank()) "Photo attached" else "No photo set",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            if (photoUrl.isNotBlank()) {
+                                TextButton(onClick = { photoUrl = "" }) {
+                                    Text("Remove", color = WineRose, fontSize = 12.sp)
+                                }
+                            }
+                            OutlinedButton(
+                                onClick = { showPhotoDialog = true },
+                                modifier = Modifier.testTag("edit_wine_change_photo_btn")
+                            ) {
+                                Icon(imageVector = Icons.Default.CameraAlt, contentDescription = null, tint = CellarGold, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(if (photoUrl.isNotBlank()) "Change" else "Add Photo")
+                            }
+                        }
+                    }
                 }
             }
 
@@ -869,6 +920,17 @@ fun EditWineScreen(
                     showBarcodeScanner = false
                 },
                 onDismiss = { showBarcodeScanner = false }
+            )
+        }
+
+        // Photo Capture Dialog for updating bottle photo
+        if (showPhotoDialog) {
+            PhotoCaptureDialog(
+                onPhotoSelected = { path ->
+                    photoUrl = path
+                    showPhotoDialog = false
+                },
+                onDismiss = { showPhotoDialog = false }
             )
         }
     }

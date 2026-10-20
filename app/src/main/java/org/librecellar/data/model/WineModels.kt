@@ -175,3 +175,11 @@ data class DecrementInventoryResponse(
     @Json(name = "remaining_quantity") val remainingQuantity: Int,
     @Json(name = "message") val message: String
 )
+
+@JsonClass(generateAdapter = true)
+data class ImageUploadResponse(
+    @Json(name = "filename") val filename: String,
+    @Json(name = "user_id") val userId: String? = null,
+    @Json(name = "url") val url: String? = null
+)
+
