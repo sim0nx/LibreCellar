@@ -47,6 +47,7 @@ import org.librecellar.ui.components.CurrencyPicker
 import org.librecellar.ui.components.PhotoCaptureDialog
 import org.librecellar.ui.components.WineBottleImage
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -59,7 +60,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -216,7 +216,7 @@ fun EditWineScreen(
 
                                 val updated = wine.copy(
                                     name = name.trim(),
-                                    vintage = vintageInt!!,
+                                    vintage = vintageInt,
                                     wineType = selectedType.name,
                                     producer = producer.trim().ifBlank { null },
                                     varietal = selectedGrapes.joinToString(", ").ifBlank { null },
@@ -658,7 +658,7 @@ fun EditWineScreen(
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = merchantDropdownExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
                                 .testTag("edit_wine_merchant_input")
                         )
 
@@ -864,7 +864,7 @@ fun EditWineScreen(
 
                             val updated = wine.copy(
                                 name = name.trim(),
-                                vintage = vintageInt!!,
+                                vintage = vintageInt,
                                 wineType = selectedType.name,
                                 producer = producer.trim().ifBlank { null },
                                 varietal = selectedGrapes.joinToString(", ").ifBlank { null },

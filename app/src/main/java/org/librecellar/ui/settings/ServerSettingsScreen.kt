@@ -62,7 +62,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -106,7 +106,7 @@ fun ServerSettingsScreen(
 ) {
     val currentUrl by repository.backendUrl.collectAsState()
     val currentUsername by repository.username.collectAsState()
-    val currentPassword by repository.password.collectAsState()
+    val isLoggedIn by repository.isLoggedIn.collectAsState()
     val isSslVerify by repository.isSslVerificationEnabled.collectAsState()
     val isOnline by repository.isBackendOnline.collectAsState()
     val wines by repository.wines.collectAsState()
@@ -121,7 +121,8 @@ fun ServerSettingsScreen(
 
     var urlInput by remember(currentUrl) { mutableStateOf(currentUrl) }
     var usernameInput by remember(currentUsername) { mutableStateOf(currentUsername) }
-    var passwordInput by remember(currentPassword) { mutableStateOf(currentPassword) }
+    // The password is only used to log in and is never stored; the app keeps a login token
+    var passwordInput by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var sslVerifyCheckbox by remember(isSslVerify) { mutableStateOf(isSslVerify) }
 
@@ -186,7 +187,7 @@ fun ServerSettingsScreen(
             Spacer(modifier = Modifier.height(10.dp))
 
             // Tab Switcher: Connection Settings vs Price Range Tiers vs API Reference
-            TabRow(
+            PrimaryTabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
                 modifier = Modifier.clip(RoundedCornerShape(10.dp))
@@ -366,7 +367,7 @@ fun ServerSettingsScreen(
 
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Provided credentials are transmitted via HTTP Basic Auth header for secured endpoints.",
+                            text = "Your password is only used to log in and is never stored on this device. The app keeps an encrypted login token instead.",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -377,7 +378,6 @@ fun ServerSettingsScreen(
                             value = usernameInput,
                             onValueChange = { usernameInput = it },
                             label = { Text("Username") },
-                            placeholder = { Text("Leave blank if API is open") },
                             leadingIcon = {
                                 Icon(imageVector = Icons.Default.Person, contentDescription = null, tint = CellarGold)
                             },
@@ -393,7 +393,7 @@ fun ServerSettingsScreen(
                             value = passwordInput,
                             onValueChange = { passwordInput = it },
                             label = { Text("Password") },
-                            placeholder = { Text("API password / secret") },
+                            placeholder = { Text(if (isLoggedIn) "Leave empty to stay logged in" else "Your password") },
                             leadingIcon = {
                                 Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = CellarGold)
                             },
@@ -412,6 +412,37 @@ fun ServerSettingsScreen(
                                 .fillMaxWidth()
                                 .testTag("settings_password_input")
                         )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Icon(
+                                imageVector = if (isLoggedIn) Icons.Default.CheckCircle else Icons.Default.Info,
+                                contentDescription = null,
+                                tint = if (isLoggedIn) Color(0xFF81C784) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (isLoggedIn) "Logged in as $currentUsername" else "Not logged in",
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (isLoggedIn) {
+                                TextButton(
+                                    onClick = {
+                                        scope.launch {
+                                            repository.logout()
+                                            lastTestResult = null
+                                            snackbarHostState.showSnackbar("Logged out")
+                                        }
+                                    },
+                                    modifier = Modifier.testTag("settings_logout_btn")
+                                ) {
+                                    Text("Log out")
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -656,6 +687,8 @@ fun ServerSettingsScreen(
                                 newSslVerify = sslVerifyCheckbox
                             )
                             lastTestResult = result
+                            // The password has served its purpose; never keep it around
+                            passwordInput = ""
                             isTestingConnection = false
                             snackbarHostState.showSnackbar(result.message)
                         }
@@ -790,7 +823,7 @@ fun ServerSettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Transmitting data over plaintext HTTP means that your API username, password, cellar configurations, and wine inventory are transmitted without encryption across the network. Anyone on your local Wi-Fi or router can intercept or tamper with this traffic.",
+                        text = "Transmitting data over plaintext HTTP means that your username, your password when logging in, the login token, cellar configurations and wine inventory are transmitted without encryption across the network. Anyone on your local Wi-Fi or router can intercept or tamper with this traffic.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1082,10 +1115,11 @@ private fun getThresholdDescription(tier: WinePriceTier, pricedWines: List<Doubl
 private fun getFastApiPythonSnippet(): String {
     return """
 from fastapi import FastAPI, Depends, HTTPException, status, Response
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBasic, HTTPBasicCredentials, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
+import os
 import secrets
 from sqlalchemy import String, Integer, Float, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session, sessionmaker
@@ -1240,23 +1274,55 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-security = HTTPBasic()
+security = HTTPBasic(auto_error=False)
+bearer = HTTPBearer(auto_error=False)
+API_USER = os.getenv("API_USER", "admin")
+API_PASS = os.getenv("API_PASS", "cellar123")
+# Login tokens from POST /api/auth/login (kept in memory: a server restart logs clients out).
+# The Android app stores such a token instead of the password.
+TOKENS: set = set()
 
-def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
-    correct_username = secrets.compare_digest(credentials.username, "admin")
-    correct_password = secrets.compare_digest(credentials.password, "cellar123")
-    if not (correct_username and correct_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-    return credentials.username
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+def password_ok(username: str, password: str) -> bool:
+    return secrets.compare_digest(username, API_USER) & secrets.compare_digest(password, API_PASS)
+
+def authenticate(
+    basic: Optional[HTTPBasicCredentials] = Depends(security),
+    token: Optional[HTTPAuthorizationCredentials] = Depends(bearer),
+):
+    # Accepts a login token (Authorization: Bearer) or HTTP Basic credentials
+    if token and token.credentials in TOKENS:
+        return API_USER
+    if basic and password_ok(basic.username, basic.password):
+        return basic.username
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Incorrect username or password",
+        headers={"WWW-Authenticate": "Basic"},
+    )
 
 # --- Health Check ---
 @app.get("/api/health")
 def health():
     return {"status": "ok", "app": "LibreCellar Server"}
+
+# --- Login (the Android app logs in once and then sends the token) ---
+@app.post("/api/auth/login")
+def login(req: LoginRequest):
+    if not password_ok(req.username, req.password):
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
+    token = secrets.token_urlsafe(32)
+    TOKENS.add(token)
+    return {"token": token, "user": {"username": req.username, "is_admin": True}}
+
+@app.post("/api/auth/logout", status_code=204)
+def logout(token: Optional[HTTPAuthorizationCredentials] = Depends(bearer)):
+    if token:
+        TOKENS.discard(token.credentials)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # --- Wine Endpoints ---
 @app.get("/api/wines", response_model=List[Wine])

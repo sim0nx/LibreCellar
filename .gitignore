@@ -18,3 +18,10 @@ local.properties
 debug.keystore
 __pycache__/
 .idea
+
+# Release signing secrets
+keystore.properties
+*.jks
+
+# Signed bundles and R8 mapping written by Android Studio's signing wizard
+/app/release

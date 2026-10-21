@@ -9,6 +9,8 @@ import org.librecellar.data.model.DefaultCollectionUpdate
 import org.librecellar.data.model.UserInfo
 import org.librecellar.data.model.DecrementInventoryResponse
 import org.librecellar.data.model.ImageUploadResponse
+import org.librecellar.data.model.LoginRequest
+import org.librecellar.data.model.LoginResponse
 import org.librecellar.data.model.Supplier
 import org.librecellar.data.model.Wine
 import retrofit2.Response
@@ -105,6 +107,13 @@ interface WineApiService {
 
     @DELETE("api/suppliers/{id}")
     suspend fun deleteSupplier(@Path("id") id: String): Response<Unit>
+
+    // --- Login (the returned token is sent as "Authorization: Bearer <token>") ---
+    @POST("api/auth/login")
+    suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
+
+    @POST("api/auth/logout")
+    suspend fun logout(): Response<Unit>
 
     // --- Current user & collections (multi-user backend) ---
     @GET("api/me")

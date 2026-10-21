@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -1311,7 +1312,7 @@ fun WizardStepDetails(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = supplierDropdownExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor()
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
                     )
                     val matchingSuppliers = suppliers.filter {
                         it.name.contains(purchaseLocation, ignoreCase = true)
@@ -1904,7 +1905,7 @@ fun ManualWineEntryForm(
                     onValueChange = onLocationChange,
                     label = { Text("Vendor / Wine Shop") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = supplierDropdownExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                    modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
                 )
                 val matching = suppliers.filter { it.name.contains(purchaseLocation, ignoreCase = true) }
                 if (matching.isNotEmpty()) {

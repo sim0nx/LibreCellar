@@ -269,3 +269,17 @@ data class DefaultCollectionUpdate(
     // Null selects the user's own collection
     @Json(name = "owner") val owner: String?
 )
+
+@JsonClass(generateAdapter = true)
+data class LoginRequest(
+    @Json(name = "username") val username: String,
+    @Json(name = "password") val password: String
+)
+
+/** Backend login: the token replaces the password for all further requests. */
+@JsonClass(generateAdapter = true)
+data class LoginResponse(
+    @Json(name = "token") val token: String,
+    @Json(name = "expires_at") val expiresAt: String? = null,
+    @Json(name = "user") val user: UserInfo? = null
+)

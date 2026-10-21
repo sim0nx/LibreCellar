@@ -9,11 +9,16 @@ import org.librecellar.data.model.AssignSlotRequest
 import org.librecellar.data.model.CellarLocation
 import org.librecellar.data.model.CollectionInfo
 import org.librecellar.data.model.DefaultCollectionUpdate
+import org.librecellar.data.model.LoginRequest
 import org.librecellar.data.model.Supplier
 import org.librecellar.data.model.Wine
+import org.librecellar.data.settings.AppSettings
+import org.librecellar.data.settings.LegacyPasswords
+import org.librecellar.data.settings.SettingsStore
+import org.librecellar.data.settings.TokenCipher
 import org.librecellar.ui.components.WineImageHelper
+import org.librecellar.BuildConfig
 import com.squareup.moshi.Moshi
-import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -23,8 +28,9 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.withContext
-import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import org.json.JSONObject
@@ -46,38 +52,32 @@ data class ConnectionTestResult(
 
 class WineRepository(private val context: Context) {
 
-    private val prefs = context.getSharedPreferences("librecellar_prefs", Context.MODE_PRIVATE)
+    private val settingsStore = SettingsStore(context)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    // Backend URL settings (default server address)
-    private val defaultUrl = "http://10.0.2.2:8000/"
+    // DataStore is asynchronous; the settings are read once at startup so every flow below
+    // starts with the stored values (a tiny file, read before the first screen is drawn)
+    private val initialSettings: AppSettings = runBlocking(Dispatchers.IO) { settingsStore.load() }
 
-    private val _backendUrl = MutableStateFlow(
-        prefs.getString("server_backend_url", null)
-            ?: prefs.getString("fastapi_backend_url", defaultUrl)
-            ?: defaultUrl
-    )
+    private val _backendUrl = MutableStateFlow(initialSettings.backendUrl)
     val backendUrl: StateFlow<String> = _backendUrl.asStateFlow()
 
-    private val _username = MutableStateFlow(
-        prefs.getString("server_username", null)
-            ?: prefs.getString("fastapi_username", "")
-            ?: ""
-    )
+    private val _username = MutableStateFlow(initialSettings.username)
     val username: StateFlow<String> = _username.asStateFlow()
 
-    private val _password = MutableStateFlow(
-        prefs.getString("server_password", null)
-            ?: prefs.getString("fastapi_password", "")
-            ?: ""
-    )
-    val password: StateFlow<String> = _password.asStateFlow()
-
     // By default, SSL verification is ON (true)
-    private val _isSslVerificationEnabled = MutableStateFlow(
-        if (prefs.contains("server_ssl_verify")) prefs.getBoolean("server_ssl_verify", true)
-        else prefs.getBoolean("fastapi_ssl_verify", true)
-    )
+    private val _isSslVerificationEnabled = MutableStateFlow(initialSettings.sslVerify)
     val isSslVerificationEnabled: StateFlow<Boolean> = _isSslVerificationEnabled.asStateFlow()
+
+    /**
+     * Login token of the backend; the password itself is never stored. Persisted encrypted
+     * with an Android Keystore key and sent as `Authorization: Bearer <token>`.
+     */
+    @Volatile
+    private var sessionToken: String? = initialSettings.encryptedToken?.let(TokenCipher::decrypt)
+
+    private val _isLoggedIn = MutableStateFlow(sessionToken != null)
+    val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
     private val _isBackendOnline = MutableStateFlow(false)
     val isBackendOnline: StateFlow<Boolean> = _isBackendOnline.asStateFlow()
@@ -123,13 +123,11 @@ class WineRepository(private val context: Context) {
     val isLocationsRefreshing: StateFlow<Boolean> = _isLocationsRefreshing.asStateFlow()
 
     // Price Tier Marking setting (enabled by default)
-    private val _isPriceTierMarkingEnabled = MutableStateFlow(
-        prefs.getBoolean("wine_price_tier_marking", true)
-    )
+    private val _isPriceTierMarkingEnabled = MutableStateFlow(initialSettings.priceTierMarking)
     val isPriceTierMarkingEnabled: StateFlow<Boolean> = _isPriceTierMarkingEnabled.asStateFlow()
 
     suspend fun updatePriceTierMarkingEnabled(enabled: Boolean) = withContext(Dispatchers.IO) {
-        prefs.edit().putBoolean("wine_price_tier_marking", enabled).apply()
+        settingsStore.setPriceTierMarking(enabled)
         _isPriceTierMarkingEnabled.value = enabled
     }
 
@@ -175,23 +173,19 @@ class WineRepository(private val context: Context) {
     }
 
     // Wine list filters for entries of collections shared with the user (persisted across restarts)
-    private val _hideReadOnlyShared = MutableStateFlow(
-        prefs.getBoolean("wine_filter_hide_read_only_shared", false)
-    )
+    private val _hideReadOnlyShared = MutableStateFlow(initialSettings.hideReadOnlyShared)
     val hideReadOnlyShared: StateFlow<Boolean> = _hideReadOnlyShared.asStateFlow()
 
-    private val _hideWritableShared = MutableStateFlow(
-        prefs.getBoolean("wine_filter_hide_writable_shared", false)
-    )
+    private val _hideWritableShared = MutableStateFlow(initialSettings.hideWritableShared)
     val hideWritableShared: StateFlow<Boolean> = _hideWritableShared.asStateFlow()
 
     suspend fun updateHideReadOnlyShared(hide: Boolean) = withContext(Dispatchers.IO) {
-        prefs.edit().putBoolean("wine_filter_hide_read_only_shared", hide).apply()
+        settingsStore.setHideReadOnlyShared(hide)
         _hideReadOnlyShared.value = hide
     }
 
     suspend fun updateHideWritableShared(hide: Boolean) = withContext(Dispatchers.IO) {
-        prefs.edit().putBoolean("wine_filter_hide_writable_shared", hide).apply()
+        settingsStore.setHideWritableShared(hide)
         _hideWritableShared.value = hide
     }
 
@@ -200,16 +194,16 @@ class WineRepository(private val context: Context) {
     }
 
     // --- Known Varietals / Grapes Management & Autocomplete ---
-    private fun getPersistedCustomGrapes(): Set<String> {
-        return prefs.getStringSet("custom_wine_grapes", emptySet()) ?: emptySet()
-    }
+    // Grapes the user typed in, kept in memory and persisted in the background
+    @Volatile
+    private var customGrapes: Set<String> = initialSettings.customGrapes
 
     fun computeAllKnownGrapes(): List<String> {
         val fromWines = _wines.value.flatMap { it.varietalList }
             .map { it.trim() }
             .filter { it.isNotBlank() }
             .distinctBy { it.lowercase() }
-        val custom = getPersistedCustomGrapes()
+        val custom = customGrapes
             .map { it.trim() }
             .filter { it.isNotBlank() }
             .distinctBy { it.lowercase() }
@@ -231,11 +225,10 @@ class WineRepository(private val context: Context) {
     fun registerGrape(grape: String) {
         val trimmed = grape.trim()
         if (trimmed.isBlank()) return
-        val currentCustom = getPersistedCustomGrapes().toMutableSet()
-        val alreadyExistsInCustom = currentCustom.any { it.equals(trimmed, ignoreCase = true) }
-        if (!alreadyExistsInCustom) {
-            currentCustom.add(trimmed)
-            prefs.edit().putStringSet("custom_wine_grapes", currentCustom).apply()
+        if (customGrapes.none { it.equals(trimmed, ignoreCase = true) }) {
+            val updated = customGrapes + trimmed
+            customGrapes = updated
+            scope.launch { settingsStore.setCustomGrapes(updated) }
         }
         _knownGrapes.value = computeAllKnownGrapes()
     }
@@ -259,48 +252,58 @@ class WineRepository(private val context: Context) {
         )
     }
 
-    private val moshi = Moshi.Builder()
-        .addLast(KotlinJsonAdapterFactory())
-        .build()
+    // All API models use generated adapters (@JsonClass(generateAdapter = true)), no reflection
+    private val moshi = Moshi.Builder().build()
 
     private var apiService: WineApiService = buildRetrofit(
         url = _backendUrl.value,
-        user = _username.value,
-        pass = _password.value,
         sslVerify = _isSslVerificationEnabled.value
     )
 
     init {
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch {
+            // Earlier versions stored the password in plain text: exchange it for a login
+            // token once; it is deleted from the device either way
+            val legacyPassword = LegacyPasswords.take(context)
+            if (legacyPassword != null && sessionToken == null && _username.value.isNotBlank()) {
+                obtainToken(_username.value, legacyPassword)
+            }
             checkConnectionAndSync()
         }
     }
 
-    private fun buildRetrofit(
-        url: String,
-        user: String,
-        pass: String,
-        sslVerify: Boolean
-    ): WineApiService {
+    private fun buildRetrofit(url: String, sslVerify: Boolean): WineApiService {
         val normalizedUrl = if (url.endsWith("/")) url else "$url/"
-        val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
-        }
 
         val clientBuilder = OkHttpClient.Builder()
             .connectTimeout(3, TimeUnit.SECONDS)
             .readTimeout(5, TimeUnit.SECONDS)
-            .addInterceptor(logging)
 
-        // Attach Basic Auth header; the backend identifies the user from these credentials
-        if (user.isNotBlank()) {
-            clientBuilder.addInterceptor { chain ->
-                val authHeader = Credentials.basic(user.trim(), pass)
-                val newRequest = chain.request().newBuilder()
-                    .header("Authorization", authHeader)
-                    .build()
-                chain.proceed(newRequest)
+        // Send the login token; it is read per request, so logging in or out needs no rebuild
+        clientBuilder.addInterceptor { chain ->
+            val token = sessionToken
+            val request = chain.request()
+            val authorized = if (token != null && request.header("Authorization") == null) {
+                request.newBuilder().header("Authorization", "Bearer $token").build()
+            } else request
+            val response = chain.proceed(authorized)
+            if (response.code == 401 && token != null && token == sessionToken) {
+                // Token expired or revoked on the server (e.g. password reset): log in again
+                scope.launch { forgetToken() }
             }
+            response
+        }
+
+        // HTTP logging in debug builds only, and never with bodies or credentials
+        if (BuildConfig.DEBUG) {
+            clientBuilder.addInterceptor(
+                HttpLoggingInterceptor().apply {
+                    level = HttpLoggingInterceptor.Level.HEADERS
+                    redactHeader("Authorization")
+                    redactHeader("Cookie")
+                    redactHeader("Set-Cookie")
+                }
+            )
         }
 
         // Handle SSL certificate validation toggle
@@ -333,6 +336,46 @@ class WineRepository(private val context: Context) {
             .create(WineApiService::class.java)
     }
 
+    private suspend fun storeToken(token: String?) {
+        sessionToken = token
+        _isLoggedIn.value = token != null
+        settingsStore.saveEncryptedToken(token?.let(TokenCipher::encrypt))
+    }
+
+    private suspend fun forgetToken() {
+        storeToken(null)
+        _isBackendOnline.value = false
+    }
+
+    /** Logs in with the password (which is not stored) and keeps the returned token. */
+    private suspend fun obtainToken(user: String, pass: String): ConnectionTestResult? {
+        return try {
+            val resp = apiService.login(LoginRequest(user, pass))
+            val token = resp.body()?.token
+            when {
+                resp.isSuccessful && token != null -> {
+                    storeToken(token)
+                    null
+                }
+                resp.code() == 401 -> ConnectionTestResult(false, "Wrong username or password.", 401)
+                resp.code() == 404 -> ConnectionTestResult(
+                    false,
+                    "This server does not support login (POST /api/auth/login). Update the backend.",
+                    404
+                )
+                else -> ConnectionTestResult(false, "Login failed (HTTP ${resp.code()}).", resp.code())
+            }
+        } catch (e: Exception) {
+            Log.d("WineRepository", "Login failed: ${e.message}")
+            ConnectionTestResult(false, "Could not reach server: ${e.localizedMessage ?: e.message}")
+        }
+    }
+
+    /**
+     * Saves the server settings and logs in. With an empty [newPass] the existing login is kept
+     * (only possible for the same server and user); otherwise the password is exchanged for a
+     * token and then discarded.
+     */
     suspend fun updateSettings(
         newUrl: String,
         newUser: String,
@@ -340,20 +383,47 @@ class WineRepository(private val context: Context) {
         newSslVerify: Boolean
     ): ConnectionTestResult = withContext(Dispatchers.IO) {
         val validUrl = if (newUrl.endsWith("/")) newUrl else "$newUrl/"
-        prefs.edit()
-            .putString("server_backend_url", validUrl)
-            .putString("server_username", newUser.trim())
-            .putString("server_password", newPass)
-            .putBoolean("server_ssl_verify", newSslVerify)
-            .apply()
+        val user = newUser.trim()
+        val sameAccount = validUrl == _backendUrl.value && user == _username.value
 
+        settingsStore.saveServer(validUrl, user, newSslVerify)
         _backendUrl.value = validUrl
-        _username.value = newUser.trim()
-        _password.value = newPass
+        _username.value = user
         _isSslVerificationEnabled.value = newSslVerify
+        apiService = buildRetrofit(validUrl, newSslVerify)
 
-        apiService = buildRetrofit(validUrl, newUser.trim(), newPass, newSslVerify)
+        if (newPass.isNotEmpty()) {
+            if (sessionToken != null) logoutQuietly()
+            obtainToken(user, newPass)?.let { failure ->
+                _isBackendOnline.value = false
+                return@withContext failure
+            }
+        } else if (!sameAccount || sessionToken == null) {
+            if (!sameAccount) storeToken(null)
+            _isBackendOnline.value = false
+            return@withContext ConnectionTestResult(false, "Enter your password to log in.")
+        }
         testConnection()
+    }
+
+    /** Ends the login on the server and on this device. */
+    suspend fun logout() = withContext(Dispatchers.IO) {
+        logoutQuietly()
+        _isBackendOnline.value = false
+        _wines.value = emptyList()
+        _locations.value = emptyList()
+        _suppliers.value = emptyList()
+        _collections.value = emptyList()
+        _currentUsername.value = null
+    }
+
+    private suspend fun logoutQuietly() {
+        try {
+            apiService.logout()
+        } catch (e: Exception) {
+            Log.d("WineRepository", "Server logout failed: ${e.message}")
+        }
+        storeToken(null)
     }
 
     suspend fun testConnection(): ConnectionTestResult = withContext(Dispatchers.IO) {
@@ -366,12 +436,17 @@ class WineRepository(private val context: Context) {
                 return@withContext ConnectionTestResult(isSuccess = false, message = msg, statusCode = healthResponse.code())
             }
 
+            if (sessionToken == null) {
+                _isBackendOnline.value = false
+                return@withContext ConnectionTestResult(false, "Server reachable. Log in with your password.")
+            }
+
             // 2. CRITICAL: Verify protected endpoint (get merchants / suppliers) to test authentication
             val protectedResponse = apiService.getSuppliers(page = 1, limit = 20)
             if (!protectedResponse.isSuccessful) {
                 _isBackendOnline.value = false
                 val msg = when (protectedResponse.code()) {
-                    401 -> "401 Unauthorized: Invalid username or password for protected endpoint."
+                    401 -> "401 Unauthorized: Your login expired or was revoked. Log in again with your password."
                     403 -> "403 Forbidden: Access denied to protected merchant/supplier endpoint."
                     404 -> "404 Not Found: Protected endpoint '/api/suppliers' not found on server."
                     else -> "Protected endpoint returned HTTP ${protectedResponse.code()}."

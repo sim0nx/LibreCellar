@@ -1326,7 +1326,7 @@ fun CellarSlotCell(
                     )
                 }
                 Text(
-                    text = "${wine!!.vintage}",
+                    text = "${wine.vintage}",
                     style = MaterialTheme.typography.labelSmall,
                     fontSize = if (cellSize >= 90.dp) 11.sp else 9.sp,
                     fontWeight = FontWeight.Bold,
