@@ -28,22 +28,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.CloudSync
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Fullscreen
-import androidx.compose.material.icons.filled.FullscreenExit
-import androidx.compose.material.icons.filled.Grain
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Thermostat
-import androidx.compose.material.icons.filled.WaterDrop
-import androidx.compose.material.icons.filled.WineBar
-import androidx.compose.material.icons.filled.ZoomIn
-import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -94,6 +78,7 @@ import org.librecellar.data.model.LocaleFormat
 import org.librecellar.data.model.CellarLocation
 import org.librecellar.data.model.Wine
 import org.librecellar.ui.components.SharedEntryBadge
+import org.librecellar.ui.theme.AppIcons
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.CellarOakWood
 import org.librecellar.ui.theme.CellarStoneSurfaceElevated
@@ -188,7 +173,7 @@ fun CellarDesignScreen(
                     contentColor = Color.White,
                     modifier = Modifier.testTag("add_location_fab")
                 ) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "Add Cellar Location")
+                    Icon(imageVector = AppIcons.Add, contentDescription = "Add Cellar Location")
                 }
             }
         }
@@ -210,7 +195,7 @@ fun CellarDesignScreen(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
-                            imageVector = Icons.Default.Grain,
+                            imageVector = AppIcons.Grain,
                             contentDescription = null,
                             tint = CellarGold,
                             modifier = Modifier.size(64.dp)
@@ -284,7 +269,7 @@ fun CellarDesignScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.CloudSync,
+                                        imageVector = AppIcons.CloudSync,
                                         contentDescription = null,
                                         tint = CellarGold,
                                         modifier = Modifier.size(16.dp)
@@ -308,7 +293,7 @@ fun CellarDesignScreen(
                                         )
                                     } else {
                                         Icon(
-                                            imageVector = Icons.Default.Refresh,
+                                            imageVector = AppIcons.Refresh,
                                             contentDescription = "Sync",
                                             tint = CellarGold,
                                             modifier = Modifier.size(16.dp)
@@ -362,7 +347,7 @@ fun CellarDesignScreen(
                                         onClick = { showAddLocationDialog = true },
                                         modifier = Modifier.testTag("create_new_location_chip")
                                     ) {
-                                        Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = CellarGold, modifier = Modifier.size(14.dp))
+                                        Icon(imageVector = AppIcons.Add, contentDescription = null, tint = CellarGold, modifier = Modifier.size(14.dp))
                                         Spacer(modifier = Modifier.width(2.dp))
                                         Text("New", color = CellarGold, fontSize = 11.sp)
                                     }
@@ -397,7 +382,7 @@ fun CellarDesignScreen(
                                                 modifier = Modifier.size(24.dp).testTag("edit_current_location_button")
                                             ) {
                                                 Icon(
-                                                    imageVector = Icons.Default.Edit,
+                                                    imageVector = AppIcons.Edit,
                                                     contentDescription = "Edit Rack",
                                                     tint = CellarGold,
                                                     modifier = Modifier.size(14.dp)
@@ -408,7 +393,7 @@ fun CellarDesignScreen(
                                                 modifier = Modifier.size(24.dp).testTag("delete_current_location_button")
                                             ) {
                                                 Icon(
-                                                    imageVector = Icons.Default.Delete,
+                                                    imageVector = AppIcons.Delete,
                                                     contentDescription = "Delete Rack",
                                                     tint = WineRose.copy(alpha = 0.8f),
                                                     modifier = Modifier.size(14.dp)
@@ -557,7 +542,7 @@ fun CellarDesignScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = Icons.Default.CloudSync,
+                                imageVector = AppIcons.CloudSync,
                                 contentDescription = null,
                                 tint = CellarGold,
                                 modifier = Modifier.size(16.dp)
@@ -583,7 +568,7 @@ fun CellarDesignScreen(
                                 )
                             } else {
                                 Icon(
-                                    imageVector = Icons.Default.Refresh,
+                                    imageVector = AppIcons.Refresh,
                                     contentDescription = "Sync",
                                     tint = CellarGold,
                                     modifier = Modifier.size(18.dp)
@@ -622,7 +607,7 @@ fun CellarDesignScreen(
                                 modifier = Modifier.testTag("edit_current_location_button")
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Edit,
+                                    imageVector = AppIcons.Edit,
                                     contentDescription = "Edit Rack Details",
                                     tint = CellarGold
                                 )
@@ -632,7 +617,7 @@ fun CellarDesignScreen(
                                 modifier = Modifier.testTag("delete_current_location_button")
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Delete,
+                                    imageVector = AppIcons.Delete,
                                     contentDescription = "Delete Location",
                                     tint = WineRose.copy(alpha = 0.8f)
                                 )
@@ -692,7 +677,7 @@ fun CellarDesignScreen(
                                 onClick = { showAddLocationDialog = true },
                                 modifier = Modifier.testTag("create_new_location_chip")
                             ) {
-                                Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = CellarGold)
+                                Icon(imageVector = AppIcons.Add, contentDescription = null, tint = CellarGold)
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("New Rack", color = CellarGold)
                             }
@@ -736,7 +721,7 @@ fun CellarDesignScreen(
                                 currentLocation.temperatureCelsius?.let { temp ->
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(
-                                            imageVector = Icons.Default.Thermostat,
+                                            imageVector = AppIcons.Thermostat,
                                             contentDescription = "Temperature",
                                             tint = CellarGold,
                                             modifier = Modifier.size(16.dp)
@@ -753,7 +738,7 @@ fun CellarDesignScreen(
                                 currentLocation.humidityPercent?.let { hum ->
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(
-                                            imageVector = Icons.Default.WaterDrop,
+                                            imageVector = AppIcons.WaterDrop,
                                             contentDescription = "Humidity",
                                             tint = Color(0xFF64B5F6),
                                             modifier = Modifier.size(16.dp)
@@ -906,7 +891,7 @@ fun CellarDesignScreen(
         AlertDialog(
             onDismissRequest = { showSlotInfoDialog = null },
             icon = {
-                Icon(imageVector = Icons.Default.WineBar, contentDescription = null, tint = CellarGold)
+                Icon(imageVector = AppIcons.WineBar, contentDescription = null, tint = CellarGold)
             },
             title = {
                 Text(text = "${wine.name} (${wine.vintage})", fontWeight = FontWeight.Bold)
@@ -1097,7 +1082,7 @@ fun ExtendedCellarGrid(
                         modifier = Modifier.size(30.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.ZoomOut,
+                            imageVector = AppIcons.ZoomOut,
                             contentDescription = "Zoom Out Grid",
                             tint = if (cellSize > 64.dp) Color.White else Color.Gray,
                             modifier = Modifier.size(18.dp)
@@ -1118,7 +1103,7 @@ fun ExtendedCellarGrid(
                         modifier = Modifier.size(30.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.ZoomIn,
+                            imageVector = AppIcons.ZoomIn,
                             contentDescription = "Zoom In Grid",
                             tint = if (cellSize < 130.dp) Color.White else Color.Gray,
                             modifier = Modifier.size(18.dp)
@@ -1133,7 +1118,7 @@ fun ExtendedCellarGrid(
                         modifier = Modifier.size(30.dp)
                     ) {
                         Icon(
-                            imageVector = if (isExpanded) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                            imageVector = if (isExpanded) AppIcons.FullscreenExit else AppIcons.Fullscreen,
                             contentDescription = if (isExpanded) "Exit Fullscreen" else "Extend Grid",
                             tint = CellarGold,
                             modifier = Modifier.size(20.dp)
@@ -1160,7 +1145,7 @@ fun ExtendedCellarGrid(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = Icons.Default.WineBar,
+                                imageVector = AppIcons.WineBar,
                                 contentDescription = null,
                                 tint = CellarGold,
                                 modifier = Modifier.size(18.dp)
@@ -1178,7 +1163,7 @@ fun ExtendedCellarGrid(
                             modifier = Modifier.size(22.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Close,
+                                imageVector = AppIcons.Close,
                                 contentDescription = "Cancel Move",
                                 tint = Color.White,
                                 modifier = Modifier.size(16.dp)
@@ -1319,7 +1304,7 @@ fun CellarSlotCell(
                 // Bottle Icon with badge
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = Icons.Default.WineBar,
+                        imageVector = AppIcons.WineBar,
                         contentDescription = "Occupied Slot",
                         tint = if (isSelectedToMove) CellarGold else WineRose,
                         modifier = Modifier.size(if (cellSize >= 90.dp) 26.dp else 20.dp)

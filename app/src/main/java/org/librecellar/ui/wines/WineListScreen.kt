@@ -24,26 +24,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Inventory2
-import androidx.compose.material.icons.filled.LocalDrink
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.TableRows
-import androidx.compose.material.icons.filled.ViewList
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -58,8 +38,6 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.filled.CloudSync
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.derivedStateOf
@@ -103,6 +81,7 @@ import org.librecellar.ui.components.GrapeBadgesRow
 import org.librecellar.ui.components.RatingBar
 import org.librecellar.ui.components.SharedEntryBadge
 import org.librecellar.ui.components.WineBottleImage
+import org.librecellar.ui.theme.AppIcons
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundy
 import org.librecellar.ui.theme.WineBurgundyDark
@@ -253,7 +232,7 @@ fun WineListScreen(
                 contentColor = Color.White,
                 modifier = Modifier.testTag("add_wine_fab")
             ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "Add Wine")
+                Icon(imageVector = AppIcons.Add, contentDescription = "Add Wine")
             }
         }
     ) { paddingValues ->
@@ -279,7 +258,7 @@ fun WineListScreen(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Default.CloudSync,
+                            imageVector = AppIcons.CloudSync,
                             contentDescription = null,
                             tint = org.librecellar.ui.theme.CellarGold,
                             modifier = Modifier.size(16.dp)
@@ -305,7 +284,7 @@ fun WineListScreen(
                             )
                         } else {
                             Icon(
-                                imageVector = Icons.Default.Refresh,
+                                imageVector = AppIcons.Refresh,
                                 contentDescription = "Sync",
                                 tint = org.librecellar.ui.theme.CellarGold,
                                 modifier = Modifier.size(18.dp)
@@ -353,7 +332,7 @@ fun WineListScreen(
                                 .testTag("view_mode_tile_btn")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.GridView,
+                                imageVector = AppIcons.GridView,
                                 contentDescription = "Tile View",
                                 tint = if (viewMode == ViewDisplayMode.TILE) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp)
@@ -371,7 +350,7 @@ fun WineListScreen(
                                 .testTag("view_mode_table_btn")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.TableRows,
+                                imageVector = AppIcons.TableRows,
                                 contentDescription = "Table View",
                                 tint = if (viewMode == ViewDisplayMode.TABLE_LIST) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp)
@@ -387,7 +366,7 @@ fun WineListScreen(
                 onValueChange = { searchQuery = it },
                 placeholder = { Text("Search name, vintage, varietal, barcode...") },
                 leadingIcon = {
-                    Icon(imageVector = Icons.Default.Search, contentDescription = "Search", tint = CellarGold)
+                    Icon(imageVector = AppIcons.Search, contentDescription = "Search", tint = CellarGold)
                 },
                 trailingIcon = {
                     IconButton(
@@ -395,7 +374,7 @@ fun WineListScreen(
                         modifier = Modifier.testTag("scan_lookup_search_button")
                     ) {
                         Icon(
-                            imageVector = Icons.Default.QrCodeScanner,
+                            imageVector = AppIcons.QrCodeScanner,
                             contentDescription = "Scan Barcode",
                             tint = CellarGold
                         )
@@ -431,7 +410,7 @@ fun WineListScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Sort,
+                                imageVector = AppIcons.Sort,
                                 contentDescription = null,
                                 tint = CellarGold,
                                 modifier = Modifier.size(16.dp)
@@ -448,7 +427,7 @@ fun WineListScreen(
                                 modifier = Modifier.size(18.dp)
                             ) {
                                 Icon(
-                                    imageVector = if (isSortAscending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                                    imageVector = if (isSortAscending) AppIcons.ArrowUpward else AppIcons.ArrowDownward,
                                     contentDescription = "Toggle sort order",
                                     tint = CellarGold,
                                     modifier = Modifier.size(14.dp)
@@ -468,7 +447,7 @@ fun WineListScreen(
                                         Text(field.label, fontWeight = if (sortField == field) FontWeight.Bold else FontWeight.Normal)
                                         if (sortField == field) {
                                             Spacer(modifier = Modifier.width(8.dp))
-                                            Icon(imageVector = Icons.Default.Check, contentDescription = null, tint = CellarGold, modifier = Modifier.size(16.dp))
+                                            Icon(imageVector = AppIcons.Check, contentDescription = null, tint = CellarGold, modifier = Modifier.size(16.dp))
                                         }
                                     }
                                 },
@@ -494,7 +473,7 @@ fun WineListScreen(
                                 .testTag("shared_filter_btn")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.FilterList,
+                                imageVector = AppIcons.FilterList,
                                 contentDescription = "Filter shared wines",
                                 tint = if (isSharedFilterActive) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier
@@ -541,7 +520,7 @@ fun WineListScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = if (showOutOfStockWines) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            imageVector = if (showOutOfStockWines) AppIcons.Visibility else AppIcons.VisibilityOff,
                             contentDescription = null,
                             tint = if (showOutOfStockWines) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
@@ -600,7 +579,7 @@ fun WineListScreen(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
-                            imageVector = Icons.Default.WineBar,
+                            imageVector = AppIcons.WineBar,
                             contentDescription = null,
                             tint = CellarGold,
                             modifier = Modifier.size(56.dp)
@@ -624,7 +603,7 @@ fun WineListScreen(
                             onClick = onAddWineClick,
                             colors = ButtonDefaults.buttonColors(containerColor = WineBurgundyLight)
                         ) {
-                            Icon(imageVector = Icons.Default.Add, contentDescription = null)
+                            Icon(imageVector = AppIcons.Add, contentDescription = null)
                             Spacer(modifier = Modifier.width(6.dp))
                             Text("Add Wine")
                         }
@@ -1000,7 +979,7 @@ fun WineTileCard(
                 contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.LocalDrink,
+                    imageVector = AppIcons.LocalDrink,
                     contentDescription = "Drink Bottle",
                     tint = if (wine.quantity > 0 && !wine.isReadOnly) CellarGold else Color.Gray,
                     modifier = Modifier.size(14.dp)
@@ -1169,7 +1148,7 @@ fun WineTableRowCard(
                     modifier = Modifier.size(28.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Remove,
+                        imageVector = AppIcons.Remove,
                         contentDescription = "Drink 1 bottle",
                         tint = if (wine.quantity > 0 && !wine.isReadOnly) WineRose else Color.Gray,
                         modifier = Modifier.size(16.dp)

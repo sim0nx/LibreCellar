@@ -23,10 +23,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -52,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.librecellar.ui.theme.AppIcons
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundy
 import org.librecellar.ui.theme.WineBurgundyLight
@@ -170,7 +167,7 @@ fun GrapeTagInput(
                 singleLine = true,
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.WineBar,
+                        imageVector = AppIcons.WineBar,
                         contentDescription = null,
                         tint = CellarGold,
                         modifier = Modifier.size(20.dp)
@@ -186,7 +183,7 @@ fun GrapeTagInput(
                                     .testTag("${testTag}_add_btn")
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Add,
+                                    imageVector = AppIcons.Add,
                                     contentDescription = "Add grape tag",
                                     tint = CellarGold,
                                     modifier = Modifier.size(20.dp)
@@ -224,7 +221,7 @@ fun GrapeTagInput(
                         text = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    imageVector = Icons.Default.Add,
+                                    imageVector = AppIcons.Add,
                                     contentDescription = null,
                                     tint = CellarGold,
                                     modifier = Modifier.size(18.dp)
@@ -267,7 +264,7 @@ fun GrapeTagInput(
                                         modifier = Modifier.weight(1f, fill = false)
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.WineBar,
+                                            imageVector = AppIcons.WineBar,
                                             contentDescription = null,
                                             tint = if (isUsedInCellar) CellarGold else CellarGold.copy(alpha = 0.5f),
                                             modifier = Modifier.size(16.dp)
@@ -412,7 +409,7 @@ fun GrapeEditableTag(
                     .testTag("remove_grape_$grape")
             ) {
                 Icon(
-                    imageVector = Icons.Default.Close,
+                    imageVector = AppIcons.Close,
                     contentDescription = "Remove $grape",
                     tint = WineRose,
                     modifier = Modifier.size(13.dp)

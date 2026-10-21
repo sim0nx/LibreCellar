@@ -23,12 +23,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddPhotoAlternate
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -58,6 +52,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
 import org.librecellar.data.repository.WineRepository
+import org.librecellar.ui.theme.AppIcons
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundyLight
 import java.io.File
@@ -195,7 +190,7 @@ fun PhotoCaptureDialog(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.CloudUpload,
+                        imageVector = AppIcons.CloudUpload,
                         contentDescription = "Uploading",
                         tint = CellarGold,
                         modifier = Modifier.size(44.dp)
@@ -233,7 +228,7 @@ fun PhotoCaptureDialog(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = Icons.Default.CameraAlt,
+                                imageVector = AppIcons.CameraAlt,
                                 contentDescription = "Bottle Photo",
                                 tint = CellarGold,
                                 modifier = Modifier.size(24.dp)
@@ -246,7 +241,7 @@ fun PhotoCaptureDialog(
                             )
                         }
                         IconButton(onClick = onDismiss, modifier = Modifier.testTag("close_photo_dialog")) {
-                            Icon(imageVector = Icons.Default.Close, contentDescription = "Close")
+                            Icon(imageVector = AppIcons.Close, contentDescription = "Close")
                         }
                     }
 
@@ -277,7 +272,7 @@ fun PhotoCaptureDialog(
                             .testTag("take_photo_camera_button"),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.CameraAlt, contentDescription = null, tint = CellarGold)
+                        Icon(imageVector = AppIcons.CameraAlt, contentDescription = null, tint = CellarGold)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Take Photo with Camera", fontWeight = FontWeight.SemiBold)
                     }
@@ -296,7 +291,7 @@ fun PhotoCaptureDialog(
                             .testTag("choose_from_gallery_button"),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.AddPhotoAlternate, contentDescription = null, tint = CellarGold)
+                        Icon(imageVector = AppIcons.AddPhotoAlternate, contentDescription = null, tint = CellarGold)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Select from Device Photos", color = MaterialTheme.colorScheme.onSurface)
                     }
@@ -343,7 +338,7 @@ fun PhotoCaptureDialog(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.WineBar,
+                                            imageVector = AppIcons.WineBar,
                                             contentDescription = null,
                                             tint = Color.White,
                                             modifier = Modifier.size(24.dp)

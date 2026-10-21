@@ -40,14 +40,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FlashOff
-import androidx.compose.material.icons.filled.FlashOn
-import androidx.compose.material.icons.filled.FlipCameraAndroid
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -87,6 +79,7 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
+import org.librecellar.ui.theme.AppIcons
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundyLight
 import org.librecellar.ui.theme.WineRose
@@ -222,7 +215,7 @@ fun BarcodeScannerDialog(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.QrCodeScanner,
+                                imageVector = AppIcons.QrCodeScanner,
                                 contentDescription = "Scan Barcode",
                                 tint = CellarGold,
                                 modifier = Modifier.size(20.dp)
@@ -243,7 +236,7 @@ fun BarcodeScannerDialog(
                         }
                     }
                     IconButton(onClick = onDismiss, modifier = Modifier.testTag("close_scanner_button")) {
-                        Icon(imageVector = Icons.Default.Close, contentDescription = "Close")
+                        Icon(imageVector = AppIcons.Close, contentDescription = "Close")
                     }
                 }
 
@@ -371,7 +364,7 @@ fun BarcodeScannerDialog(
                                 }
                             ) {
                                 Icon(
-                                    imageVector = if (isTorchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                                    imageVector = if (isTorchEnabled) AppIcons.FlashOn else AppIcons.FlashOff,
                                     contentDescription = "Torch",
                                     tint = if (isTorchEnabled) CellarGold else Color.White
                                 )
@@ -393,7 +386,7 @@ fun BarcodeScannerDialog(
                                 }
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.FlipCameraAndroid,
+                                    imageVector = AppIcons.FlipCameraAndroid,
                                     contentDescription = "Switch Camera",
                                     tint = Color.White
                                 )
@@ -409,7 +402,7 @@ fun BarcodeScannerDialog(
                             verticalArrangement = Arrangement.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.CameraAlt,
+                                imageVector = AppIcons.CameraAlt,
                                 contentDescription = null,
                                 tint = WineRose,
                                 modifier = Modifier.size(44.dp)
@@ -472,7 +465,7 @@ fun BarcodeScannerDialog(
                         .testTag("scan_from_photo_btn"),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Icon(imageVector = Icons.Default.Image, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(imageVector = AppIcons.Image, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Scan Barcode From Photo in Gallery")
                 }
@@ -548,7 +541,7 @@ fun BarcodeScannerDialog(
                     colors = ButtonDefaults.buttonColors(containerColor = WineBurgundyLight),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Icon(imageVector = Icons.Default.QrCodeScanner, contentDescription = null, tint = Color.White)
+                    Icon(imageVector = AppIcons.QrCodeScanner, contentDescription = null, tint = Color.White)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Use Barcode", color = Color.White, fontWeight = FontWeight.Bold)
                 }

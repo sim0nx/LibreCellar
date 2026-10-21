@@ -17,17 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.Button
@@ -43,9 +32,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.CloudSync
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -75,6 +61,7 @@ import org.librecellar.data.model.Supplier
 import org.librecellar.data.model.Wine
 import org.librecellar.ui.components.CountryDropdownSelect
 import org.librecellar.ui.components.SharedEntryBadge
+import org.librecellar.ui.theme.AppIcons
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundyLight
 import org.librecellar.ui.theme.WineRose
@@ -136,7 +123,7 @@ fun SuppliersScreen(
                 contentColor = Color.White,
                 modifier = Modifier.testTag("add_supplier_fab")
             ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "Add Supplier")
+                Icon(imageVector = AppIcons.Add, contentDescription = "Add Supplier")
             }
         }
     ) { paddingValues ->
@@ -165,7 +152,7 @@ fun SuppliersScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Storefront,
+                            imageVector = AppIcons.Storefront,
                             contentDescription = null,
                             tint = CellarGold,
                             modifier = Modifier.size(24.dp)
@@ -200,7 +187,7 @@ fun SuppliersScreen(
                                 )
                             } else {
                                 Icon(
-                                    imageVector = Icons.Default.Refresh,
+                                    imageVector = AppIcons.Refresh,
                                     contentDescription = "Sync",
                                     tint = CellarGold,
                                     modifier = Modifier.size(18.dp)
@@ -216,7 +203,7 @@ fun SuppliersScreen(
                     onValueChange = { searchQuery = it },
                     placeholder = { Text("Search merchants, shops, distributors...") },
                     leadingIcon = {
-                        Icon(imageVector = Icons.Default.Search, contentDescription = "Search", tint = CellarGold)
+                        Icon(imageVector = AppIcons.Search, contentDescription = "Search", tint = CellarGold)
                     },
                     singleLine = true,
                     modifier = Modifier
@@ -303,7 +290,7 @@ fun SuppliersScreen(
                                             modifier = Modifier.testTag("edit_supplier_${supplier.id}")
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Default.Edit,
+                                                imageVector = AppIcons.Edit,
                                                 contentDescription = "Edit Merchant",
                                                 tint = CellarGold,
                                                 modifier = Modifier.size(20.dp)
@@ -315,7 +302,7 @@ fun SuppliersScreen(
                                             modifier = Modifier.testTag("delete_supplier_${supplier.id}")
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Default.Delete,
+                                                imageVector = AppIcons.Delete,
                                                 contentDescription = "Delete",
                                                 tint = WineRose.copy(alpha = 0.8f),
                                                 modifier = Modifier.size(20.dp)
@@ -329,7 +316,7 @@ fun SuppliersScreen(
                                 if (!supplier.city.isNullOrBlank() || !supplier.country.isNullOrBlank()) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(
-                                            imageVector = Icons.Default.LocationOn,
+                                            imageVector = AppIcons.LocationOn,
                                             contentDescription = null,
                                             tint = CellarGold,
                                             modifier = Modifier.size(16.dp)
@@ -347,7 +334,7 @@ fun SuppliersScreen(
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(
-                                            imageVector = Icons.Default.Language,
+                                            imageVector = AppIcons.Language,
                                             contentDescription = null,
                                             tint = MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.size(16.dp)
@@ -380,7 +367,7 @@ fun SuppliersScreen(
                                 ) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(
-                                            imageVector = Icons.Default.WineBar,
+                                            imageVector = AppIcons.WineBar,
                                             contentDescription = null,
                                             tint = CellarGold,
                                             modifier = Modifier.size(15.dp)
@@ -397,7 +384,7 @@ fun SuppliersScreen(
                                     // Date Added Tracker
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(
-                                            imageVector = Icons.Default.CalendarToday,
+                                            imageVector = AppIcons.CalendarToday,
                                             contentDescription = "Date Added",
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.size(13.dp)

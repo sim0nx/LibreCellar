@@ -1,0 +1,80 @@
+# Material Symbols (Rounded, weight 400) used by the app, see https://fonts.google.com/icons
+#
+# One icon per line: <symbol name> <filled|outline>
+# The symbol name is the one shown on fonts.google.com/icons (e.g. wine_bar). Each line becomes
+# res/drawable/ic_<name>[_outline].xml and the property AppIcons.<Name>[Outline].
+#
+# After editing this list, run:  python3 tools/update_icons.py
+add filled
+add_photo_alternate filled
+arrow_back filled
+arrow_downward filled
+arrow_drop_down filled
+arrow_forward filled
+arrow_upward filled
+auto_awesome filled
+calendar_today filled
+camera_alt filled
+check filled
+check_circle filled
+clear filled
+close filled
+cloud filled
+cloud_sync filled
+cloud_upload filled
+dashboard filled
+dashboard outline
+delete filled
+edit filled
+edit_note filled
+error filled
+event filled
+filter_list filled
+flash_off filled
+flash_on filled
+flip_camera_android filled
+fullscreen filled
+fullscreen_exit filled
+grain filled
+grid_on filled
+grid_on outline
+grid_view filled
+https filled
+image filled
+info filled
+language filled
+local_drink filled
+location_off filled
+location_on filled
+lock filled
+lock outline
+no_encryption filled
+payments filled
+people filled
+people outline
+percent filled
+person filled
+public filled
+qr_code filled
+qr_code_scanner filled
+qr_code_scanner outline
+refresh filled
+remove filled
+search filled
+settings filled
+settings outline
+shield filled
+sort filled
+star filled
+star outline
+storefront filled
+storefront outline
+table_rows filled
+thermostat filled
+visibility filled
+visibility_off filled
+warning filled
+water_drop filled
+wine_bar filled
+zoom_in filled
+zoom_out filled

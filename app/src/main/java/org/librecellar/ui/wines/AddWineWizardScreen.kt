@@ -24,21 +24,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Payments
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.EditNote
-import androidx.compose.material.icons.filled.LocationOff
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ButtonDefaults
@@ -93,6 +78,7 @@ import org.librecellar.ui.components.PhotoCaptureDialog
 import org.librecellar.ui.components.RatingBar
 import org.librecellar.ui.components.WineBottleImage
 import org.librecellar.ui.suppliers.AddSupplierDialog
+import org.librecellar.ui.theme.AppIcons
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundy
 import org.librecellar.ui.theme.WineBurgundyLight
@@ -127,7 +113,7 @@ fun PriceRangeSuggestionSelector(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = Icons.Default.Payments,
+                    imageVector = AppIcons.Payments,
                     contentDescription = null,
                     tint = CellarGold,
                     modifier = Modifier.size(16.dp)
@@ -386,7 +372,7 @@ fun AddWineWizardScreen(
                             modifier = Modifier.testTag("back_button_add_wine")
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = AppIcons.ArrowBack,
                                 contentDescription = "Back"
                             )
                         }
@@ -402,7 +388,7 @@ fun AddWineWizardScreen(
                     }
 
                     IconButton(onClick = onCancel) {
-                        Icon(imageVector = Icons.Default.Close, contentDescription = "Cancel")
+                        Icon(imageVector = AppIcons.Close, contentDescription = "Cancel")
                     }
                 }
             }
@@ -434,7 +420,7 @@ fun AddWineWizardScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.WineBar,
+                                imageVector = AppIcons.WineBar,
                                 contentDescription = null,
                                 tint = CellarGold,
                                 modifier = Modifier.size(36.dp)
@@ -484,7 +470,7 @@ fun AddWineWizardScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.AutoAwesome,
+                                        imageVector = AppIcons.AutoAwesome,
                                         contentDescription = null,
                                         tint = Color.White
                                     )
@@ -504,7 +490,7 @@ fun AddWineWizardScreen(
                                     )
                                 }
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    imageVector = AppIcons.ArrowForward,
                                     contentDescription = null,
                                     tint = CellarGold
                                 )
@@ -538,7 +524,7 @@ fun AddWineWizardScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.EditNote,
+                                        imageVector = AppIcons.EditNote,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
@@ -557,7 +543,7 @@ fun AddWineWizardScreen(
                                     )
                                 }
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    imageVector = AppIcons.ArrowForward,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -811,7 +797,7 @@ fun WizardStepBarcode(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
             Icon(
-                imageVector = Icons.Default.QrCodeScanner,
+                imageVector = AppIcons.QrCodeScanner,
                 contentDescription = null,
                 tint = CellarGold,
                 modifier = Modifier.size(56.dp)
@@ -841,7 +827,7 @@ fun WizardStepBarcode(
                     .height(50.dp)
                     .testTag("wizard_open_scanner_button")
             ) {
-                Icon(imageVector = Icons.Default.QrCodeScanner, contentDescription = null)
+                Icon(imageVector = AppIcons.QrCodeScanner, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Open Barcode Scanner")
             }
@@ -918,7 +904,7 @@ fun WizardStepPhoto(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
             Icon(
-                imageVector = Icons.Default.CameraAlt,
+                imageVector = AppIcons.CameraAlt,
                 contentDescription = null,
                 tint = CellarGold,
                 modifier = Modifier.size(56.dp)
@@ -967,7 +953,7 @@ fun WizardStepPhoto(
                                 .testTag("clear_photo_button")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Close,
+                                imageVector = AppIcons.Close,
                                 contentDescription = "Remove photo",
                                 tint = Color.White,
                                 modifier = Modifier.size(16.dp)
@@ -980,7 +966,7 @@ fun WizardStepPhoto(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.CameraAlt,
+                            imageVector = AppIcons.CameraAlt,
                             contentDescription = null,
                             tint = CellarGold.copy(alpha = 0.8f),
                             modifier = Modifier.size(48.dp)
@@ -1013,7 +999,7 @@ fun WizardStepPhoto(
                     .padding(horizontal = 32.dp)
                     .testTag("wizard_pick_photo_button")
             ) {
-                Icon(imageVector = Icons.Default.CameraAlt, contentDescription = null, tint = CellarGold)
+                Icon(imageVector = AppIcons.CameraAlt, contentDescription = null, tint = CellarGold)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(if (photoUrl == null) "Take Photo or Select" else "Change Bottle Photo")
             }
@@ -1294,7 +1280,7 @@ fun WizardStepDetails(
                         style = MaterialTheme.typography.labelMedium
                     )
                     TextButton(onClick = onAddSupplierClick) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Icon(imageVector = AppIcons.Add, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(2.dp))
                         Text("+ New Vendor", fontSize = 12.sp, color = CellarGold)
                     }
@@ -1536,7 +1522,7 @@ fun WizardStepLocation(
                     .fillMaxWidth()
                     .testTag("wizard_create_new_location_btn")
             ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = CellarGold)
+                Icon(imageVector = AppIcons.Add, contentDescription = null, tint = CellarGold)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Create New Cellar Location", color = MaterialTheme.colorScheme.onSurface)
             }
@@ -1600,7 +1586,7 @@ fun WizardStepLocation(
                 .padding(bottom = 16.dp)
                 .testTag("finish_add_wine_button")
         ) {
-            Icon(imageVector = Icons.Default.Check, contentDescription = null)
+            Icon(imageVector = AppIcons.Check, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
             Text("Complete & Save Wine Entry")
         }
@@ -1842,7 +1828,7 @@ fun ManualWineEntryForm(
             placeholder = { Text("Scan or enter barcode") },
             trailingIcon = {
                 IconButton(onClick = onBarcodeScanClick) {
-                    Icon(imageVector = Icons.Default.QrCodeScanner, contentDescription = "Scan", tint = CellarGold)
+                    Icon(imageVector = AppIcons.QrCodeScanner, contentDescription = "Scan", tint = CellarGold)
                 }
             },
             singleLine = true,
@@ -1877,7 +1863,7 @@ fun ManualWineEntryForm(
                 }
             }
             OutlinedButton(onClick = onPhotoClick) {
-                Icon(imageVector = Icons.Default.CameraAlt, contentDescription = null, tint = CellarGold)
+                Icon(imageVector = AppIcons.CameraAlt, contentDescription = null, tint = CellarGold)
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(if (!photoUrl.isNullOrBlank()) "Change Photo" else "Add Photo")
             }
@@ -1981,7 +1967,7 @@ fun ManualWineEntryForm(
         }
 
         TextButton(onClick = onCreateNewLocation) {
-            Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = CellarGold)
+            Icon(imageVector = AppIcons.Add, contentDescription = null, tint = CellarGold)
             Spacer(modifier = Modifier.width(4.dp))
             Text("Create New Cellar Location", color = CellarGold)
         }

@@ -28,14 +28,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.LocalDrink
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -72,6 +64,7 @@ import org.librecellar.data.model.CellarLocation
 import org.librecellar.data.model.Wine
 import org.librecellar.ui.components.BarcodeScannerDialog
 import org.librecellar.ui.components.RatingBar
+import org.librecellar.ui.theme.AppIcons
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundy
 import org.librecellar.ui.theme.WineBurgundyLight
@@ -131,7 +124,7 @@ fun QuickScanScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.QrCodeScanner,
+                    imageVector = AppIcons.QrCodeScanner,
                     contentDescription = null,
                     tint = CellarGold,
                     modifier = Modifier.size(28.dp)
@@ -174,7 +167,7 @@ fun QuickScanScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
-                        imageVector = Icons.Default.CameraAlt,
+                        imageVector = AppIcons.CameraAlt,
                         contentDescription = null,
                         tint = CellarGold,
                         modifier = Modifier.size(32.dp)
@@ -215,7 +208,7 @@ fun QuickScanScreen(
                     .height(48.dp)
                     .testTag("open_live_camera_scanner_btn")
             ) {
-                Icon(imageVector = Icons.Default.QrCodeScanner, contentDescription = null, tint = CellarGold)
+                Icon(imageVector = AppIcons.QrCodeScanner, contentDescription = null, tint = CellarGold)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Scan Bottle with Live Camera", fontWeight = FontWeight.Bold, color = Color.White)
             }
@@ -239,7 +232,7 @@ fun QuickScanScreen(
                             onClick = { showLiveCameraScanner = true },
                             modifier = Modifier.testTag("quick_scan_camera_btn")
                         ) {
-                            Icon(imageVector = Icons.Default.QrCodeScanner, contentDescription = "Scan", tint = CellarGold)
+                            Icon(imageVector = AppIcons.QrCodeScanner, contentDescription = "Scan", tint = CellarGold)
                         }
                     }
                 },
@@ -339,7 +332,7 @@ fun QuickScanScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.WineBar,
+                                    imageVector = AppIcons.WineBar,
                                     contentDescription = null,
                                     tint = CellarGold,
                                     modifier = Modifier.size(30.dp)
@@ -360,7 +353,7 @@ fun QuickScanScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.LocationOn,
+                                    imageVector = AppIcons.LocationOn,
                                     contentDescription = null,
                                     tint = CellarGold,
                                     modifier = Modifier.size(24.dp)
@@ -420,7 +413,7 @@ fun QuickScanScreen(
                                 .height(50.dp)
                                 .testTag("tick_off_bottle_action_btn")
                         ) {
-                            Icon(imageVector = Icons.Default.LocalDrink, contentDescription = null)
+                            Icon(imageVector = AppIcons.LocalDrink, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Tick Off Bottle (-1 from Inventory)",

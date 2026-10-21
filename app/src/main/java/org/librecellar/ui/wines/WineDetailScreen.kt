@@ -21,22 +21,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Payments
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.filled.LocalDrink
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Percent
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.QrCode
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.ShoppingBag
-import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -76,6 +60,7 @@ import org.librecellar.ui.components.GrapeBadgesFlow
 import org.librecellar.ui.components.RatingBar
 import org.librecellar.ui.components.SharedEntryBadge
 import org.librecellar.ui.components.WineBottleImage
+import org.librecellar.ui.theme.AppIcons
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundy
 import org.librecellar.ui.theme.WineBurgundyLight
@@ -112,7 +97,7 @@ fun WineDetailScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(onClick = onBack, modifier = Modifier.testTag("wine_detail_back_button")) {
-                            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(imageVector = AppIcons.ArrowBack, contentDescription = "Back")
                         }
                     Text(
                         text = "Wine Dossier",
@@ -128,13 +113,13 @@ fun WineDetailScreen(
                                 onClick = onEdit,
                                 modifier = Modifier.testTag("edit_wine_button")
                             ) {
-                                Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit Wine", tint = CellarGold)
+                                Icon(imageVector = AppIcons.Edit, contentDescription = "Edit Wine", tint = CellarGold)
                             }
                             IconButton(
                                 onClick = { showDeleteConfirm = true },
                                 modifier = Modifier.testTag("delete_wine_button")
                             ) {
-                                Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete Wine", tint = WineRose)
+                                Icon(imageVector = AppIcons.Delete, contentDescription = "Delete Wine", tint = WineRose)
                             }
                         }
                     }
@@ -192,7 +177,7 @@ fun WineDetailScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.WineBar,
+                                imageVector = AppIcons.WineBar,
                                 contentDescription = null,
                                 tint = CellarGold,
                                 modifier = Modifier.size(50.dp)
@@ -303,7 +288,7 @@ fun WineDetailScreen(
                                 enabled = wine.quantity > 0 && !wine.isReadOnly,
                                 modifier = Modifier.testTag("detail_decrement_btn")
                             ) {
-                                Icon(imageVector = Icons.Default.Remove, contentDescription = "Consume 1 bottle", tint = WineRose)
+                                Icon(imageVector = AppIcons.Remove, contentDescription = "Consume 1 bottle", tint = WineRose)
                             }
 
                             Text(
@@ -319,7 +304,7 @@ fun WineDetailScreen(
                                 enabled = !wine.isReadOnly,
                                 modifier = Modifier.testTag("detail_increment_btn")
                             ) {
-                                Icon(imageVector = Icons.Default.Add, contentDescription = "Add 1 bottle", tint = CellarGold)
+                                Icon(imageVector = AppIcons.Add, contentDescription = "Add 1 bottle", tint = CellarGold)
                             }
                         }
                     }
@@ -342,7 +327,7 @@ fun WineDetailScreen(
                             .testTag("detail_edit_wine_button")
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Edit,
+                            imageVector = AppIcons.Edit,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
                             tint = CellarGold
@@ -369,7 +354,7 @@ fun WineDetailScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.LocationOn, contentDescription = null, tint = CellarGold)
+                        Icon(imageVector = AppIcons.LocationOn, contentDescription = null, tint = CellarGold)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Cellar Placement",
@@ -434,10 +419,10 @@ fun WineDetailScreen(
                         else -> null
                     }
                     originLocation?.let {
-                        WineDetailRow(label = "Country / Region", value = it, icon = Icons.Default.Public)
+                        WineDetailRow(label = "Country / Region", value = it, icon = AppIcons.Public)
                     }
                     wine.varietal?.let {
-                        WineDetailRow(label = "Varietal / Blend", value = it, icon = Icons.Default.WineBar)
+                        WineDetailRow(label = "Varietal / Blend", value = it, icon = AppIcons.WineBar)
                         if (wine.varietalList.isNotEmpty()) {
                             GrapeBadgesFlow(
                                 grapes = wine.varietalList,
@@ -446,10 +431,10 @@ fun WineDetailScreen(
                         }
                     }
                     wine.size?.let {
-                        WineDetailRow(label = "Bottle Size", value = it, icon = Icons.Default.LocalDrink)
+                        WineDetailRow(label = "Bottle Size", value = it, icon = AppIcons.LocalDrink)
                     }
                     wine.alcoholPercent?.let {
-                        WineDetailRow(label = "Alcohol Percentage", value = "${LocaleFormat.formatDecimal(it)} %", icon = Icons.Default.Percent)
+                        WineDetailRow(label = "Alcohol Percentage", value = "${LocaleFormat.formatDecimal(it)} %", icon = AppIcons.Percent)
                     }
                     wine.purchasePrice?.let { price ->
                         val tierSuffix = if (isPriceTierEnabled) {
@@ -459,17 +444,17 @@ fun WineDetailScreen(
                         WineDetailRow(
                             label = "Purchase Price",
                             value = LocaleFormat.formatPrice(price, wine.currency) + tierSuffix,
-                            icon = Icons.Default.Payments
+                            icon = AppIcons.Payments
                         )
                     }
                     wine.purchaseLocation?.let {
-                        WineDetailRow(label = "Purchase Location / Vendor", value = it, icon = Icons.Default.Storefront)
+                        WineDetailRow(label = "Purchase Location / Vendor", value = it, icon = AppIcons.Storefront)
                     }
                     wine.purchaseDate?.let {
-                        WineDetailRow(label = "Purchase Date", value = it, icon = Icons.Default.Event)
+                        WineDetailRow(label = "Purchase Date", value = it, icon = AppIcons.Event)
                     }
                     wine.barcode?.let {
-                        WineDetailRow(label = "Bottle Barcode", value = it, icon = Icons.Default.QrCode, isMono = true)
+                        WineDetailRow(label = "Bottle Barcode", value = it, icon = AppIcons.QrCode, isMono = true)
                     }
                 }
             }
@@ -512,7 +497,7 @@ fun WineDetailScreen(
                     .height(48.dp)
                     .testTag("detail_tick_off_bottle_button")
             ) {
-                Icon(imageVector = Icons.Default.LocalDrink, contentDescription = null)
+                Icon(imageVector = AppIcons.LocalDrink, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Drink Bottle / Tick Off (-1)")
             }

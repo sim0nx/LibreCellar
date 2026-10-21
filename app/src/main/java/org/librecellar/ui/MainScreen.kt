@@ -27,21 +27,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.CloudDone
-import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.GridOn
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material.icons.filled.WineBar
-import androidx.compose.material.icons.outlined.Dashboard
-import androidx.compose.material.icons.outlined.GridOn
-import androidx.compose.material.icons.outlined.QrCodeScanner
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -79,6 +64,7 @@ import org.librecellar.ui.cellar.CellarDesignScreen
 import org.librecellar.ui.inventory.QuickScanScreen
 import org.librecellar.ui.settings.ServerSettingsScreen
 import org.librecellar.ui.suppliers.SuppliersScreen
+import org.librecellar.ui.theme.AppIcons
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundy
 import org.librecellar.ui.theme.WineBurgundyDark
@@ -259,7 +245,7 @@ fun MainScreen(repository: WineRepository) {
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.WineBar,
+                                        imageVector = AppIcons.WineBar,
                                         contentDescription = null,
                                         tint = CellarGold,
                                         modifier = Modifier.size(20.dp)
@@ -310,7 +296,7 @@ fun MainScreen(repository: WineRepository) {
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Icon(
-                                        imageVector = Icons.Default.Settings,
+                                        imageVector = AppIcons.Settings,
                                         contentDescription = "Server Settings",
                                         tint = Color.White.copy(alpha = 0.85f),
                                         modifier = Modifier.size(14.dp)
@@ -333,7 +319,7 @@ fun MainScreen(repository: WineRepository) {
                             onClick = { activeTab = MainNavigationTab.WINES },
                             icon = {
                                 Icon(
-                                    imageVector = if (activeTab == MainNavigationTab.WINES) Icons.Filled.Dashboard else Icons.Outlined.Dashboard,
+                                    imageVector = if (activeTab == MainNavigationTab.WINES) AppIcons.Dashboard else AppIcons.DashboardOutline,
                                     contentDescription = "Wines"
                                 )
                             },
@@ -351,7 +337,7 @@ fun MainScreen(repository: WineRepository) {
                             onClick = { activeTab = MainNavigationTab.CELLAR },
                             icon = {
                                 Icon(
-                                    imageVector = if (activeTab == MainNavigationTab.CELLAR) Icons.Filled.GridOn else Icons.Outlined.GridOn,
+                                    imageVector = if (activeTab == MainNavigationTab.CELLAR) AppIcons.GridOn else AppIcons.GridOnOutline,
                                     contentDescription = "Cellar Slots"
                                 )
                             },
@@ -369,7 +355,7 @@ fun MainScreen(repository: WineRepository) {
                             onClick = { activeTab = MainNavigationTab.QUICK_SCAN },
                             icon = {
                                 Icon(
-                                    imageVector = if (activeTab == MainNavigationTab.QUICK_SCAN) Icons.Filled.QrCodeScanner else Icons.Outlined.QrCodeScanner,
+                                    imageVector = if (activeTab == MainNavigationTab.QUICK_SCAN) AppIcons.QrCodeScanner else AppIcons.QrCodeScannerOutline,
                                     contentDescription = "Quick Scan"
                                 )
                             },
@@ -387,7 +373,7 @@ fun MainScreen(repository: WineRepository) {
                             onClick = { activeTab = MainNavigationTab.SUPPLIERS },
                             icon = {
                                 Icon(
-                                    imageVector = if (activeTab == MainNavigationTab.SUPPLIERS) Icons.Filled.Storefront else Icons.Outlined.Storefront,
+                                    imageVector = if (activeTab == MainNavigationTab.SUPPLIERS) AppIcons.Storefront else AppIcons.StorefrontOutline,
                                     contentDescription = "Suppliers"
                                 )
                             },
@@ -405,7 +391,7 @@ fun MainScreen(repository: WineRepository) {
                             onClick = { activeTab = MainNavigationTab.SETTINGS },
                             icon = {
                                 Icon(
-                                    imageVector = if (activeTab == MainNavigationTab.SETTINGS) Icons.Filled.Settings else Icons.Outlined.Settings,
+                                    imageVector = if (activeTab == MainNavigationTab.SETTINGS) AppIcons.Settings else AppIcons.SettingsOutline,
                                     contentDescription = "Server Settings"
                                 )
                             },

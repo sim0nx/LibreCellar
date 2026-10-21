@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -40,6 +38,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import org.librecellar.data.api.WineApiService
 import org.librecellar.data.repository.WineRepository
+import org.librecellar.ui.theme.AppIcons
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundyLight
 import org.librecellar.ui.theme.WineRose
@@ -307,7 +306,7 @@ fun WineBottleImage(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Default.WineBar,
+                imageVector = AppIcons.WineBar,
                 contentDescription = contentDescription,
                 tint = Color.White,
                 modifier = Modifier.size(iconSize)
@@ -400,7 +399,7 @@ fun DefaultWinePlaceholder(
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            imageVector = Icons.Default.WineBar,
+            imageVector = AppIcons.WineBar,
             contentDescription = null,
             tint = iconColor,
             modifier = Modifier.size(iconSize)

@@ -25,22 +25,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Payments
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.filled.LocalDrink
-import androidx.compose.material.icons.filled.LocationOff
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Percent
-import androidx.compose.material.icons.filled.QrCode
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material.icons.filled.WineBar
 import org.librecellar.data.model.LocaleFormat
 import org.librecellar.ui.components.BarcodeScannerDialog
 import org.librecellar.ui.components.CurrencyPicker
@@ -89,6 +73,7 @@ import org.librecellar.data.model.WineType
 import org.librecellar.ui.components.CountryDropdownSelect
 import org.librecellar.ui.components.GrapeTagInput
 import org.librecellar.ui.components.RatingBar
+import org.librecellar.ui.theme.AppIcons
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundy
 import org.librecellar.ui.theme.WineBurgundyLight
@@ -187,7 +172,7 @@ fun EditWineScreen(
                             onClick = onCancel,
                             modifier = Modifier.testTag("edit_wine_back_button")
                         ) {
-                            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancel")
+                            Icon(imageVector = AppIcons.ArrowBack, contentDescription = "Cancel")
                         }
                         Spacer(modifier = Modifier.width(4.dp))
                         Column {
@@ -246,7 +231,7 @@ fun EditWineScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = WineBurgundyLight),
                         modifier = Modifier.testTag("edit_wine_top_save_button")
                     ) {
-                        Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(imageVector = AppIcons.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Save")
                     }
@@ -274,7 +259,7 @@ fun EditWineScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.WineBar, contentDescription = null, tint = CellarGold)
+                        Icon(imageVector = AppIcons.WineBar, contentDescription = null, tint = CellarGold)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Wine Identity & Varietal",
@@ -399,7 +384,7 @@ fun EditWineScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.LocationOn, contentDescription = null, tint = CellarGold)
+                        Icon(imageVector = AppIcons.LocationOn, contentDescription = null, tint = CellarGold)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Stock & Cellar Rack Placement",
@@ -475,7 +460,7 @@ fun EditWineScreen(
                                 },
                                 label = { Text("Not in cellar (Unassigned)") },
                                 leadingIcon = {
-                                    Icon(imageVector = Icons.Default.LocationOff, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Icon(imageVector = AppIcons.LocationOff, contentDescription = null, modifier = Modifier.size(16.dp))
                                 },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = WineBurgundyLight,
@@ -593,7 +578,7 @@ fun EditWineScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.Payments, contentDescription = null, tint = CellarGold)
+                        Icon(imageVector = AppIcons.Payments, contentDescription = null, tint = CellarGold)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Purchase & Price Tier Markings",
@@ -624,7 +609,7 @@ fun EditWineScreen(
                             onValueChange = { purchaseDate = it },
                             label = { Text("Purchase Date") },
                             placeholder = { Text("YYYY-MM-DD") },
-                            leadingIcon = { Icon(imageVector = Icons.Default.Event, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                            leadingIcon = { Icon(imageVector = AppIcons.Event, contentDescription = null, modifier = Modifier.size(18.dp)) },
                             singleLine = true,
                             modifier = Modifier
                                 .weight(1.2f)
@@ -654,7 +639,7 @@ fun EditWineScreen(
                             onValueChange = { purchaseLocation = it },
                             label = { Text("Merchant / Purchased From") },
                             placeholder = { Text("e.g. Berry Bros. & Rudd, Caviste") },
-                            leadingIcon = { Icon(imageVector = Icons.Default.Storefront, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                            leadingIcon = { Icon(imageVector = AppIcons.Storefront, contentDescription = null, modifier = Modifier.size(18.dp)) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = merchantDropdownExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -693,7 +678,7 @@ fun EditWineScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.Edit, contentDescription = null, tint = CellarGold)
+                        Icon(imageVector = AppIcons.Edit, contentDescription = null, tint = CellarGold)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Bottle Specs & Tasting Dossier",
@@ -723,7 +708,7 @@ fun EditWineScreen(
                             label = { Text("Alcohol %") },
                             placeholder = { Text("e.g. ${LocaleFormat.formatDecimal(13.5)}") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            leadingIcon = { Icon(imageVector = Icons.Default.Percent, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                            leadingIcon = { Icon(imageVector = AppIcons.Percent, contentDescription = null, modifier = Modifier.size(16.dp)) },
                             singleLine = true,
                             modifier = Modifier
                                 .weight(1f)
@@ -749,7 +734,7 @@ fun EditWineScreen(
                                     modifier = Modifier.size(36.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.WineBar,
+                                        imageVector = AppIcons.WineBar,
                                         contentDescription = "$star Stars",
                                         tint = if (star <= tastingRating) CellarGold else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
                                         modifier = Modifier.size(26.dp)
@@ -780,14 +765,14 @@ fun EditWineScreen(
                         onValueChange = { barcode = it },
                         label = { Text("Bottle Barcode / UPC") },
                         placeholder = { Text("Scan or enter barcode number") },
-                        leadingIcon = { Icon(imageVector = Icons.Default.QrCode, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        leadingIcon = { Icon(imageVector = AppIcons.QrCode, contentDescription = null, modifier = Modifier.size(18.dp)) },
                         trailingIcon = {
                             IconButton(
                                 onClick = { showBarcodeScanner = true },
                                 modifier = Modifier.testTag("edit_wine_scan_barcode_btn")
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.QrCodeScanner,
+                                    imageVector = AppIcons.QrCodeScanner,
                                     contentDescription = "Scan Barcode with Camera",
                                     tint = org.librecellar.ui.theme.CellarGold
                                 )
@@ -839,7 +824,7 @@ fun EditWineScreen(
                                 onClick = { showPhotoDialog = true },
                                 modifier = Modifier.testTag("edit_wine_change_photo_btn")
                             ) {
-                                Icon(imageVector = Icons.Default.CameraAlt, contentDescription = null, tint = CellarGold, modifier = Modifier.size(16.dp))
+                                Icon(imageVector = AppIcons.CameraAlt, contentDescription = null, tint = CellarGold, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(if (photoUrl.isNotBlank()) "Change" else "Add Photo")
                             }
@@ -898,7 +883,7 @@ fun EditWineScreen(
                         .height(50.dp)
                         .testTag("save_wine_changes_button")
                 ) {
-                    Icon(imageVector = Icons.Default.Check, contentDescription = null)
+                    Icon(imageVector = AppIcons.Check, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Save Wine Changes", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }

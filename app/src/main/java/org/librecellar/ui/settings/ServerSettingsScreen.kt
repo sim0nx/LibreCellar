@@ -20,25 +20,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Payments
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.CloudDone
-import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Https
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.NoEncryption
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -92,6 +73,7 @@ import org.librecellar.data.model.Wine
 import org.librecellar.data.model.WinePriceTier
 import org.librecellar.data.repository.ConnectionTestResult
 import org.librecellar.data.repository.WineRepository
+import org.librecellar.ui.theme.AppIcons
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.StatusWarning
 import org.librecellar.ui.theme.WineBurgundy
@@ -163,7 +145,7 @@ fun ServerSettingsScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Cloud,
+                        imageVector = AppIcons.Cloud,
                         contentDescription = null,
                         tint = CellarGold,
                         modifier = Modifier.size(24.dp)
@@ -263,7 +245,7 @@ fun ServerSettingsScreen(
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    imageVector = if (isNonSsl) Icons.Default.NoEncryption else Icons.Default.Https,
+                                    imageVector = if (isNonSsl) AppIcons.NoEncryption else AppIcons.Https,
                                     contentDescription = null,
                                     tint = if (isNonSsl) StatusWarning else Color(0xFF4CAF50),
                                     modifier = Modifier.size(20.dp)
@@ -291,7 +273,7 @@ fun ServerSettingsScreen(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.Warning,
+                                            imageVector = AppIcons.Warning,
                                             contentDescription = "Non-SSL Warning",
                                             tint = StatusWarning,
                                             modifier = Modifier.size(16.dp)
@@ -323,7 +305,7 @@ fun ServerSettingsScreen(
                                         modifier = Modifier.testTag("non_ssl_triangle_icon")
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.Warning,
+                                            imageVector = AppIcons.Warning,
                                             contentDescription = "Non-SSL Warning Info",
                                             tint = StatusWarning
                                         )
@@ -356,7 +338,7 @@ fun ServerSettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = CellarGold, modifier = Modifier.size(20.dp))
+                            Icon(imageVector = AppIcons.Lock, contentDescription = null, tint = CellarGold, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "API Authentication Credentials",
@@ -379,7 +361,7 @@ fun ServerSettingsScreen(
                             onValueChange = { usernameInput = it },
                             label = { Text("Username") },
                             leadingIcon = {
-                                Icon(imageVector = Icons.Default.Person, contentDescription = null, tint = CellarGold)
+                                Icon(imageVector = AppIcons.Person, contentDescription = null, tint = CellarGold)
                             },
                             singleLine = true,
                             modifier = Modifier
@@ -395,12 +377,12 @@ fun ServerSettingsScreen(
                             label = { Text("Password") },
                             placeholder = { Text(if (isLoggedIn) "Leave empty to stay logged in" else "Your password") },
                             leadingIcon = {
-                                Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = CellarGold)
+                                Icon(imageVector = AppIcons.Lock, contentDescription = null, tint = CellarGold)
                             },
                             trailingIcon = {
                                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                     Icon(
-                                        imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        imageVector = if (passwordVisible) AppIcons.VisibilityOff else AppIcons.Visibility,
                                         contentDescription = if (passwordVisible) "Hide password" else "Show password"
                                     )
                                 }
@@ -417,7 +399,7 @@ fun ServerSettingsScreen(
 
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             Icon(
-                                imageVector = if (isLoggedIn) Icons.Default.CheckCircle else Icons.Default.Info,
+                                imageVector = if (isLoggedIn) AppIcons.CheckCircle else AppIcons.Info,
                                 contentDescription = null,
                                 tint = if (isLoggedIn) Color(0xFF81C784) else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(16.dp)
@@ -459,7 +441,7 @@ fun ServerSettingsScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(imageVector = Icons.Default.Shield, contentDescription = null, tint = CellarGold, modifier = Modifier.size(20.dp))
+                            Icon(imageVector = AppIcons.Shield, contentDescription = null, tint = CellarGold, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "SSL / TLS Certificate Validation",
@@ -514,7 +496,7 @@ fun ServerSettingsScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Warning,
+                                        imageVector = AppIcons.Warning,
                                         contentDescription = null,
                                         tint = StatusWarning,
                                         modifier = Modifier.size(18.dp)
@@ -546,7 +528,7 @@ fun ServerSettingsScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Icon(imageVector = Icons.Default.People, contentDescription = null, tint = CellarGold, modifier = Modifier.size(20.dp))
+                                Icon(imageVector = AppIcons.People, contentDescription = null, tint = CellarGold, modifier = Modifier.size(20.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = "New Entries Go To",
@@ -612,7 +594,7 @@ fun ServerSettingsScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(imageVector = Icons.Default.Payments, contentDescription = null, tint = CellarGold, modifier = Modifier.size(20.dp))
+                            Icon(imageVector = AppIcons.Payments, contentDescription = null, tint = CellarGold, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Wine Price Range Marking",
@@ -705,7 +687,7 @@ fun ServerSettingsScreen(
                         Spacer(modifier = Modifier.width(10.dp))
                         Text("Verifying Connection...")
                     } else {
-                        Icon(imageVector = Icons.Default.Refresh, contentDescription = null)
+                        Icon(imageVector = AppIcons.Refresh, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Save Settings & Test Connection", fontWeight = FontWeight.Bold)
                     }
@@ -726,7 +708,7 @@ fun ServerSettingsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = if (result.isSuccess) Icons.Default.CheckCircle else Icons.Default.Error,
+                                imageVector = if (result.isSuccess) AppIcons.CheckCircle else AppIcons.Error,
                                 contentDescription = null,
                                 tint = if (result.isSuccess) Color(0xFF81C784) else Color(0xFFE57373),
                                 modifier = Modifier.size(24.dp)
@@ -801,7 +783,7 @@ fun ServerSettingsScreen(
             onDismissRequest = { showNonSslWarningDialog = false },
             icon = {
                 Icon(
-                    imageVector = Icons.Default.Warning,
+                    imageVector = AppIcons.Warning,
                     contentDescription = "Non-SSL Warning",
                     tint = StatusWarning,
                     modifier = Modifier.size(36.dp)
@@ -898,7 +880,7 @@ fun PriceRangeSettingsContent(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Payments,
+                            imageVector = AppIcons.Payments,
                             contentDescription = null,
                             tint = if (isPriceTierEnabled) CellarGold else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(24.dp)
@@ -948,7 +930,7 @@ fun PriceRangeSettingsContent(
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = Icons.Default.Info,
+                        imageVector = AppIcons.Info,
                         contentDescription = null,
                         tint = CellarGold,
                         modifier = Modifier.size(18.dp)

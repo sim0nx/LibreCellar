@@ -4,9 +4,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.People
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -18,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.librecellar.data.model.CollectionAccess
 import org.librecellar.data.model.SharedEntry
+import org.librecellar.ui.theme.AppIcons
 
 /**
  * Unobtrusive marker for an entry of a collection shared read-only with the user:
@@ -42,7 +40,7 @@ fun SharedEntryBadge(
     val isReadOnly = access == CollectionAccess.READ
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Icon(
-            imageVector = if (isReadOnly) Icons.Outlined.Lock else Icons.Outlined.People,
+            imageVector = if (isReadOnly) AppIcons.LockOutline else AppIcons.PeopleOutline,
             contentDescription = if (isReadOnly) "Shared read-only" else "Shared collection",
             tint = tint,
             modifier = Modifier.size(11.dp)

@@ -4,8 +4,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -22,6 +20,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.librecellar.data.model.LocaleFormat
+import org.librecellar.ui.theme.AppIcons
 import org.librecellar.ui.theme.CellarGold
 import java.util.Locale
 
@@ -50,7 +49,7 @@ fun CurrencyPicker(
             .testTag("currency_picker")
     ) {
         Text(LocaleFormat.shortCurrencySymbol(currencyCode), fontWeight = FontWeight.Bold, color = CellarGold)
-        Icon(Icons.Default.ArrowDropDown, contentDescription = "Change currency", tint = CellarGold, modifier = Modifier.size(18.dp))
+        Icon(AppIcons.ArrowDropDown, contentDescription = "Change currency", tint = CellarGold, modifier = Modifier.size(18.dp))
     }
 
     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
