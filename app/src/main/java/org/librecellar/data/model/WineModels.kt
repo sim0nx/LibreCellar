@@ -1,7 +1,7 @@
 package org.librecellar.data.model
 
-import com.squareup.moshi.Json
-import com.squareup.moshi.JsonClass
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -121,39 +121,39 @@ interface SharedEntry {
         get() = collectionAccess == CollectionAccess.WRITE
 }
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class Wine(
-    @Json(name = "id") val id: String = UUID.randomUUID().toString(),
+    @SerialName("id") val id: String = UUID.randomUUID().toString(),
     // Mandatory properties:
-    @Json(name = "name") val name: String,
-    @Json(name = "vintage") val vintage: Int,
+    @SerialName("name") val name: String,
+    @SerialName("vintage") val vintage: Int,
     // Optional properties:
-    @Json(name = "country") val country: String? = null,
-    @Json(name = "region") val region: String? = null,
-    @Json(name = "varietal") val varietal: String? = null,
-    @Json(name = "producer") val producer: String? = null,
-    @Json(name = "purchase_date") val purchaseDate: String? = null,
-    @Json(name = "alcohol_percent") val alcoholPercent: Double? = null,
-    @Json(name = "size") val size: String? = "0.75L",
-    @Json(name = "tasting_rating") val tastingRating: Int? = null, // 1 to 5 stars
-    @Json(name = "comments") val comments: String? = null,
-    @Json(name = "purchase_price") val purchasePrice: Double? = null,
+    @SerialName("country") val country: String? = null,
+    @SerialName("region") val region: String? = null,
+    @SerialName("varietal") val varietal: String? = null,
+    @SerialName("producer") val producer: String? = null,
+    @SerialName("purchase_date") val purchaseDate: String? = null,
+    @SerialName("alcohol_percent") val alcoholPercent: Double? = null,
+    @SerialName("size") val size: String? = "0.75L",
+    @SerialName("tasting_rating") val tastingRating: Int? = null, // 1 to 5 stars
+    @SerialName("comments") val comments: String? = null,
+    @SerialName("purchase_price") val purchasePrice: Double? = null,
     // ISO 4217 code of purchasePrice, e.g. "EUR"; null for wines saved before currencies existed
-    @Json(name = "currency") val currency: String? = null,
-    @Json(name = "purchase_location") val purchaseLocation: String? = null, // Vendor/Shop name
-    @Json(name = "photo_url") val photoUrl: String? = null,
-    @Json(name = "barcode") val barcode: String? = null,
-    @Json(name = "price_tier") val priceTier: String? = null, // Optional user-assigned or suggested tier
+    @SerialName("currency") val currency: String? = null,
+    @SerialName("purchase_location") val purchaseLocation: String? = null, // Vendor/Shop name
+    @SerialName("photo_url") val photoUrl: String? = null,
+    @SerialName("barcode") val barcode: String? = null,
+    @SerialName("price_tier") val priceTier: String? = null, // Optional user-assigned or suggested tier
     // Inventory & Cellar tracking:
-    @Json(name = "quantity") val quantity: Int = 1,
-    @Json(name = "location_id") val locationId: String? = null,
-    @Json(name = "slot_row") val slotRow: Int? = null,
-    @Json(name = "slot_column") val slotColumn: Int? = null,
-    @Json(name = "slot_label") val slotLabel: String? = null,
-    @Json(name = "wine_type") val wineType: String = WineType.RED.name,
+    @SerialName("quantity") val quantity: Int = 1,
+    @SerialName("location_id") val locationId: String? = null,
+    @SerialName("slot_row") val slotRow: Int? = null,
+    @SerialName("slot_column") val slotColumn: Int? = null,
+    @SerialName("slot_label") val slotLabel: String? = null,
+    @SerialName("wine_type") val wineType: String = WineType.RED.name,
     // Set by the backend: collection owner and the user's access to it (see CollectionAccess)
-    @Json(name = "owner") override val owner: String? = null,
-    @Json(name = "access") override val access: String? = null
+    @SerialName("owner") override val owner: String? = null,
+    @SerialName("access") override val access: String? = null
 ) : SharedEntry {
     val isInCellar: Boolean
         get() = !locationId.isNullOrBlank()
@@ -184,18 +184,18 @@ data class Wine(
     }
 }
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class CellarLocation(
-    @Json(name = "id") val id: String = UUID.randomUUID().toString(),
-    @Json(name = "name") val name: String,
-    @Json(name = "rows") val rows: Int = 4,
-    @Json(name = "columns") val columns: Int = 6,
-    @Json(name = "description") val description: String? = null,
-    @Json(name = "temperature_celsius") val temperatureCelsius: Double? = null,
-    @Json(name = "humidity_percent") val humidityPercent: Double? = null,
-    @Json(name = "color_hex") val colorHex: String? = "#6B1D2F",
-    @Json(name = "owner") override val owner: String? = null,
-    @Json(name = "access") override val access: String? = null
+    @SerialName("id") val id: String = UUID.randomUUID().toString(),
+    @SerialName("name") val name: String,
+    @SerialName("rows") val rows: Int = 4,
+    @SerialName("columns") val columns: Int = 6,
+    @SerialName("description") val description: String? = null,
+    @SerialName("temperature_celsius") val temperatureCelsius: Double? = null,
+    @SerialName("humidity_percent") val humidityPercent: Double? = null,
+    @SerialName("color_hex") val colorHex: String? = "#6B1D2F",
+    @SerialName("owner") override val owner: String? = null,
+    @SerialName("access") override val access: String? = null
 ) : SharedEntry {
     val totalSlots: Int
         get() = rows * columns
@@ -209,77 +209,77 @@ data class CellarLocation(
         !isReadOnly && (wine?.owner == null || owner == null || owner == wine.owner)
 }
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class Supplier(
-    @Json(name = "id") val id: String = UUID.randomUUID().toString(),
-    @Json(name = "name") val name: String,
-    @Json(name = "type") val type: String = "Wine Merchant",
-    @Json(name = "city") val city: String? = null,
-    @Json(name = "country") val country: String? = null,
-    @Json(name = "website") val website: String? = null,
-    @Json(name = "notes") val notes: String? = null,
-    @Json(name = "date_added") val dateAdded: String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()),
-    @Json(name = "owner") override val owner: String? = null,
-    @Json(name = "access") override val access: String? = null
+    @SerialName("id") val id: String = UUID.randomUUID().toString(),
+    @SerialName("name") val name: String,
+    @SerialName("type") val type: String = "Wine Merchant",
+    @SerialName("city") val city: String? = null,
+    @SerialName("country") val country: String? = null,
+    @SerialName("website") val website: String? = null,
+    @SerialName("notes") val notes: String? = null,
+    @SerialName("date_added") val dateAdded: String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()),
+    @SerialName("owner") override val owner: String? = null,
+    @SerialName("access") override val access: String? = null
 ) : SharedEntry
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class AssignSlotRequest(
-    @Json(name = "wine_id") val wineId: String,
-    @Json(name = "location_id") val locationId: String?,
-    @Json(name = "slot_row") val slotRow: Int?,
-    @Json(name = "slot_column") val slotColumn: Int?
+    @SerialName("wine_id") val wineId: String,
+    @SerialName("location_id") val locationId: String?,
+    @SerialName("slot_row") val slotRow: Int?,
+    @SerialName("slot_column") val slotColumn: Int?
 )
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class DecrementInventoryResponse(
-    @Json(name = "wine_id") val wineId: String,
-    @Json(name = "previous_quantity") val previousQuantity: Int,
-    @Json(name = "remaining_quantity") val remainingQuantity: Int,
-    @Json(name = "message") val message: String
+    @SerialName("wine_id") val wineId: String,
+    @SerialName("previous_quantity") val previousQuantity: Int,
+    @SerialName("remaining_quantity") val remainingQuantity: Int,
+    @SerialName("message") val message: String
 )
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class ImageUploadResponse(
-    @Json(name = "filename") val filename: String,
-    @Json(name = "url") val url: String? = null
+    @SerialName("filename") val filename: String,
+    @SerialName("url") val url: String? = null
 )
 
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class UserInfo(
-    @Json(name = "username") val username: String,
-    @Json(name = "is_admin") val isAdmin: Boolean = false,
+    @SerialName("username") val username: String,
+    @SerialName("is_admin") val isAdmin: Boolean = false,
     // Owner username of the collection new entries go to
-    @Json(name = "default_collection") val defaultCollection: String? = null
+    @SerialName("default_collection") val defaultCollection: String? = null
 )
 
 /** A collection the user can access: their own ("owner") or one shared with them ("write"/"read"). */
-@JsonClass(generateAdapter = true)
+@Serializable
 data class CollectionInfo(
-    @Json(name = "owner") val owner: String,
-    @Json(name = "permission") val permission: String
+    @SerialName("owner") val owner: String,
+    @SerialName("permission") val permission: String
 ) {
     val collectionAccess: CollectionAccess
         get() = CollectionAccess.fromKey(permission)
 }
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class DefaultCollectionUpdate(
     // Null selects the user's own collection
-    @Json(name = "owner") val owner: String?
+    @SerialName("owner") val owner: String?
 )
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class LoginRequest(
-    @Json(name = "username") val username: String,
-    @Json(name = "password") val password: String
+    @SerialName("username") val username: String,
+    @SerialName("password") val password: String
 )
 
 /** Backend login: the token replaces the password for all further requests. */
-@JsonClass(generateAdapter = true)
+@Serializable
 data class LoginResponse(
-    @Json(name = "token") val token: String,
-    @Json(name = "expires_at") val expiresAt: String? = null,
-    @Json(name = "user") val user: UserInfo? = null
+    @SerialName("token") val token: String,
+    @SerialName("expires_at") val expiresAt: String? = null,
+    @SerialName("user") val user: UserInfo? = null
 )

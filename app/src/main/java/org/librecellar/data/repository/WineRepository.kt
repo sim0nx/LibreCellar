@@ -18,7 +18,6 @@ import org.librecellar.data.settings.SettingsStore
 import org.librecellar.data.settings.TokenCipher
 import org.librecellar.ui.components.WineImageHelper
 import org.librecellar.BuildConfig
-import com.squareup.moshi.Moshi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -36,7 +35,9 @@ import okhttp3.logging.HttpLoggingInterceptor
 import org.json.JSONObject
 import retrofit2.Response
 import retrofit2.Retrofit
-import retrofit2.converter.moshi.MoshiConverterFactory
+import okhttp3.MediaType.Companion.toMediaType
+import org.librecellar.data.api.ApiJson
+import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
@@ -252,9 +253,6 @@ class WineRepository(private val context: Context) {
         )
     }
 
-    // All API models use generated adapters (@JsonClass(generateAdapter = true)), no reflection
-    private val moshi = Moshi.Builder().build()
-
     private var apiService: WineApiService = buildRetrofit(
         url = _backendUrl.value,
         sslVerify = _isSslVerificationEnabled.value
@@ -331,7 +329,7 @@ class WineRepository(private val context: Context) {
         return Retrofit.Builder()
             .baseUrl(normalizedUrl)
             .client(client)
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(WineApiService::class.java)
     }

@@ -3,7 +3,7 @@ import java.util.Properties
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
-  alias(libs.plugins.google.devtools.ksp)
+  alias(libs.plugins.kotlin.serialization)
 }
 
 // Release signing settings, kept out of version control
@@ -104,11 +104,10 @@ dependencies {
   implementation(libs.coil.network.okhttp)
   // Backend REST API
   implementation(libs.retrofit)
-  implementation(libs.retrofit.converter.moshi)
+  implementation(libs.retrofit.converter.kotlinx.serialization)
   implementation(libs.okhttp)
   implementation(libs.okhttp.logging.interceptor)
-  implementation(libs.moshi)
-  "ksp"(libs.moshi.kotlin.codegen)
+  implementation(libs.kotlinx.serialization.json)
   testImplementation(libs.junit)
   testImplementation(libs.androidx.test.core)
   testImplementation(libs.androidx.test.ext.junit)
