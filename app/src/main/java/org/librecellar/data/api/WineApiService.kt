@@ -4,6 +4,9 @@ import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import org.librecellar.data.model.AssignSlotRequest
 import org.librecellar.data.model.CellarLocation
+import org.librecellar.data.model.CollectionInfo
+import org.librecellar.data.model.DefaultCollectionUpdate
+import org.librecellar.data.model.UserInfo
 import org.librecellar.data.model.DecrementInventoryResponse
 import org.librecellar.data.model.ImageUploadResponse
 import org.librecellar.data.model.Supplier
@@ -12,7 +15,6 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
-import retrofit2.http.Header
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.PUT
@@ -47,6 +49,9 @@ interface WineApiService {
 
     @POST("api/wines/{id}/decrement")
     suspend fun decrementInventory(@Path("id") id: String): Response<DecrementInventoryResponse>
+
+    @POST("api/wines/{id}/increment")
+    suspend fun incrementInventory(@Path("id") id: String): Response<DecrementInventoryResponse>
 
     // --- Cellar Locations & Racks API ---
     @GET("api/cellar/locations")
@@ -101,6 +106,16 @@ interface WineApiService {
     @DELETE("api/suppliers/{id}")
     suspend fun deleteSupplier(@Path("id") id: String): Response<Unit>
 
+    // --- Current user & collections (multi-user backend) ---
+    @GET("api/me")
+    suspend fun getMe(): Response<UserInfo>
+
+    @GET("api/collections")
+    suspend fun getCollections(): Response<List<CollectionInfo>>
+
+    @PUT("api/me/default-collection")
+    suspend fun setDefaultCollection(@Body update: DefaultCollectionUpdate): Response<UserInfo>
+
     // --- Health check ---
     @GET("api/health")
     suspend fun checkHealth(): Response<Map<String, String>>
@@ -109,21 +124,18 @@ interface WineApiService {
     @Multipart
     @POST("api/images/upload")
     suspend fun uploadImage(
-        @Part image: MultipartBody.Part,
-        @Header("X-User-Id") userId: String
+        @Part image: MultipartBody.Part
     ): Response<ImageUploadResponse>
 
     @Streaming
     @GET("api/images/{filename}")
     suspend fun downloadImage(
-        @Path("filename") filename: String,
-        @Header("X-User-Id") userId: String? = null
+        @Path("filename") filename: String
     ): Response<ResponseBody>
 
     @DELETE("api/images/{filename}")
     suspend fun deleteImage(
-        @Path("filename") filename: String,
-        @Header("X-User-Id") userId: String? = null
+        @Path("filename") filename: String
     ): Response<Unit>
 }
 

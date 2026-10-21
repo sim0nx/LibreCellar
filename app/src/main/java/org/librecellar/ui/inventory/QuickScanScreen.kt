@@ -91,9 +91,10 @@ fun QuickScanScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val matchedWine = wines.find {
+    // Prefer the user's own bottle, then one of an editable shared collection
+    val matchedWine = wines.filter {
         !it.barcode.isNullOrBlank() && it.barcode.trim() == scannedBarcode.trim()
-    }
+    }.minByOrNull { it.collectionAccess.ordinal }
 
     val matchedLocation = locations.find { it.id == matchedWine?.locationId }
 
@@ -411,7 +412,7 @@ fun QuickScanScreen(
                                     )
                                 }
                             },
-                            enabled = matchedWine.quantity > 0,
+                            enabled = matchedWine.quantity > 0 && !matchedWine.isReadOnly,
                             colors = ButtonDefaults.buttonColors(containerColor = WineBurgundyLight),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier

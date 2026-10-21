@@ -214,7 +214,7 @@ fun PhotoCaptureDialog(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Storing in user folder with unique UUIDv7 filename and caching locally.",
+                        text = "Storing in your collection with unique UUIDv7 filename and caching locally.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

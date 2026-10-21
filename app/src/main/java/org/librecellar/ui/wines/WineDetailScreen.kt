@@ -24,7 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
@@ -66,6 +66,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.librecellar.data.model.LocaleFormat
 import org.librecellar.data.model.CellarLocation
 import org.librecellar.data.model.CountryHelper
 import androidx.compose.ui.layout.ContentScale
@@ -73,6 +74,7 @@ import org.librecellar.data.model.Wine
 import org.librecellar.ui.components.GrapeBadge
 import org.librecellar.ui.components.GrapeBadgesFlow
 import org.librecellar.ui.components.RatingBar
+import org.librecellar.ui.components.SharedEntryBadge
 import org.librecellar.ui.components.WineBottleImage
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundy
@@ -118,17 +120,22 @@ fun WineDetailScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(
-                            onClick = onEdit,
-                            modifier = Modifier.testTag("edit_wine_button")
-                        ) {
-                            Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit Wine", tint = CellarGold)
-                        }
-                        IconButton(
-                            onClick = { showDeleteConfirm = true },
-                            modifier = Modifier.testTag("delete_wine_button")
-                        ) {
-                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete Wine", tint = WineRose)
+                        if (wine.isReadOnly) {
+                            // Keeps the title centered where edit & delete would be
+                            Spacer(modifier = Modifier.width(96.dp))
+                        } else {
+                            IconButton(
+                                onClick = onEdit,
+                                modifier = Modifier.testTag("edit_wine_button")
+                            ) {
+                                Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit Wine", tint = CellarGold)
+                            }
+                            IconButton(
+                                onClick = { showDeleteConfirm = true },
+                                modifier = Modifier.testTag("delete_wine_button")
+                            ) {
+                                Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete Wine", tint = WineRose)
+                            }
                         }
                     }
                 }
@@ -238,7 +245,7 @@ fun WineDetailScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "${tier.symbol} ${tier.displayName}",
+                                    text = "${tier.symbolFor(wine.currency)} ${tier.displayName}",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = tierColor
@@ -293,7 +300,7 @@ fun WineDetailScreen(
                         ) {
                             IconButton(
                                 onClick = onDecrement,
-                                enabled = wine.quantity > 0,
+                                enabled = wine.quantity > 0 && !wine.isReadOnly,
                                 modifier = Modifier.testTag("detail_decrement_btn")
                             ) {
                                 Icon(imageVector = Icons.Default.Remove, contentDescription = "Consume 1 bottle", tint = WineRose)
@@ -309,6 +316,7 @@ fun WineDetailScreen(
 
                             IconButton(
                                 onClick = onIncrement,
+                                enabled = !wine.isReadOnly,
                                 modifier = Modifier.testTag("detail_increment_btn")
                             ) {
                                 Icon(imageVector = Icons.Default.Add, contentDescription = "Add 1 bottle", tint = CellarGold)
@@ -318,7 +326,15 @@ fun WineDetailScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    OutlinedButton(
+                    SharedEntryBadge(
+                        entry = wine,
+                        showWritable = true,
+                        modifier = Modifier
+                            .padding(bottom = 8.dp)
+                            .testTag("detail_shared_badge")
+                    )
+
+                    if (!wine.isReadOnly) OutlinedButton(
                         onClick = onEdit,
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
@@ -373,8 +389,8 @@ fun WineDetailScreen(
                     )
                     if (location != null) {
                         val climateInfo = buildList {
-                            location.temperatureCelsius?.let { add("$it°C") }
-                            location.humidityPercent?.let { add("$it% humidity") }
+                            location.temperatureCelsius?.let { add("${LocaleFormat.formatDecimal(it)}°C") }
+                            location.humidityPercent?.let { add("${LocaleFormat.formatDecimal(it)}% humidity") }
                         }
                         if (climateInfo.isNotEmpty()) {
                             Text(
@@ -433,17 +449,17 @@ fun WineDetailScreen(
                         WineDetailRow(label = "Bottle Size", value = it, icon = Icons.Default.LocalDrink)
                     }
                     wine.alcoholPercent?.let {
-                        WineDetailRow(label = "Alcohol Percentage", value = "$it %", icon = Icons.Default.Percent)
+                        WineDetailRow(label = "Alcohol Percentage", value = "${LocaleFormat.formatDecimal(it)} %", icon = Icons.Default.Percent)
                     }
                     wine.purchasePrice?.let { price ->
                         val tierSuffix = if (isPriceTierEnabled) {
                             val tier = wine.getResolvedPriceTier(allWines)
-                            " • ${tier.displayName} (${tier.symbol})"
+                            " • ${tier.displayName} (${tier.symbolFor(wine.currency)})"
                         } else ""
                         WineDetailRow(
                             label = "Purchase Price",
-                            value = String.format("$%.2f", price) + tierSuffix,
-                            icon = Icons.Default.AttachMoney
+                            value = LocaleFormat.formatPrice(price, wine.currency) + tierSuffix,
+                            icon = Icons.Default.Payments
                         )
                     }
                     wine.purchaseLocation?.let {
@@ -489,7 +505,7 @@ fun WineDetailScreen(
             // Quick Tick Off Bottle Button
             Button(
                 onClick = onDecrement,
-                enabled = wine.quantity > 0,
+                enabled = wine.quantity > 0 && !wine.isReadOnly,
                 colors = ButtonDefaults.buttonColors(containerColor = WineBurgundyLight),
                 modifier = Modifier
                     .fillMaxWidth()

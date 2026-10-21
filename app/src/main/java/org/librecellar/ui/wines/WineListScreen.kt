@@ -52,6 +52,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -91,6 +92,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.librecellar.data.model.LocaleFormat
 import org.librecellar.data.model.CellarLocation
 import org.librecellar.data.model.CountryHelper
 import org.librecellar.data.model.Wine
@@ -99,6 +101,7 @@ import org.librecellar.ui.components.BarcodeScannerDialog
 import org.librecellar.ui.components.GrapeBadge
 import org.librecellar.ui.components.GrapeBadgesRow
 import org.librecellar.ui.components.RatingBar
+import org.librecellar.ui.components.SharedEntryBadge
 import org.librecellar.ui.components.WineBottleImage
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundy
@@ -133,7 +136,11 @@ fun WineListScreen(
     onRefresh: () -> Unit = {},
     hasMoreWines: Boolean = false,
     isLoadingMore: Boolean = false,
-    onLoadMore: () -> Unit = {}
+    onLoadMore: () -> Unit = {},
+    hideReadOnlyShared: Boolean = false,
+    hideWritableShared: Boolean = false,
+    onHideReadOnlySharedChange: (Boolean) -> Unit = {},
+    onHideWritableSharedChange: (Boolean) -> Unit = {}
 ) {
     var viewMode by remember { mutableStateOf(ViewDisplayMode.TILE) }
     val gridState = rememberLazyGridState()
@@ -179,6 +186,9 @@ fun WineListScreen(
     var sortField by remember { mutableStateOf(WineSortField.VINTAGE) }
     var isSortAscending by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
+    var showSharedFilterMenu by remember { mutableStateOf(false) }
+    val hasSharedWines = wines.any { it.isReadOnly || it.isSharedWritable }
+    val isSharedFilterActive = hideReadOnlyShared || hideWritableShared
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -210,7 +220,12 @@ fun WineListScreen(
             else -> true
         }
 
-        matchesSearch && (matchesStockVisibility || selectedFilter == "OUT_OF_STOCK") && matchesFilter
+        // Entries of collections shared with the user can be hidden (persisted in settings)
+        val matchesSharedVisibility = !(hideReadOnlyShared && wine.isReadOnly) &&
+                !(hideWritableShared && wine.isSharedWritable)
+
+        matchesSearch && (matchesStockVisibility || selectedFilter == "OUT_OF_STOCK") && matchesFilter &&
+                matchesSharedVisibility
     }
 
     // Sorting logic
@@ -466,6 +481,52 @@ fun WineListScreen(
                     }
                 }
 
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                // Shared collections filter: hide read-only and/or read-write shared entries
+                if (hasSharedWines || isSharedFilterActive) {
+                    Box {
+                        Surface(
+                            color = if (isSharedFilterActive) WineBurgundy else MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { showSharedFilterMenu = true }
+                                .testTag("shared_filter_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FilterList,
+                                contentDescription = "Filter shared wines",
+                                tint = if (isSharedFilterActive) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                                    .size(16.dp)
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showSharedFilterMenu,
+                            onDismissRequest = { showSharedFilterMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Hide read-only shared") },
+                                leadingIcon = {
+                                    Checkbox(checked = hideReadOnlyShared, onCheckedChange = null)
+                                },
+                                onClick = { onHideReadOnlySharedChange(!hideReadOnlyShared) },
+                                modifier = Modifier.testTag("hide_read_only_shared_item")
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Hide read-write shared") },
+                                leadingIcon = {
+                                    Checkbox(checked = hideWritableShared, onCheckedChange = null)
+                                },
+                                onClick = { onHideWritableSharedChange(!hideWritableShared) },
+                                modifier = Modifier.testTag("hide_writable_shared_item")
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                }
+
                 // Out of stock visibility toggle button
                 Surface(
                     color = if (showOutOfStockWines) WineBurgundy else MaterialTheme.colorScheme.surfaceVariant,
@@ -493,6 +554,7 @@ fun WineListScreen(
                             color = if (showOutOfStockWines) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
                 }
             }
 
@@ -854,6 +916,8 @@ fun WineTileCard(
                 overflow = TextOverflow.Ellipsis
             )
 
+            SharedEntryBadge(entry = wine, modifier = Modifier.padding(top = 2.dp))
+
             // Grape / Varietal Badges
             if (wine.varietalList.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(3.dp))
@@ -892,7 +956,7 @@ fun WineTileCard(
                         shape = RoundedCornerShape(4.dp)
                     ) {
                         Text(
-                            text = "${tier.symbol} ${tier.shortLabel}",
+                            text = "${tier.symbolFor(wine.currency)} ${tier.shortLabel}",
                             style = MaterialTheme.typography.labelSmall,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
@@ -927,7 +991,7 @@ fun WineTileCard(
             // Quick Tick Off / Drink Button
             OutlinedButton(
                 onClick = onTickOff,
-                enabled = wine.quantity > 0,
+                enabled = wine.quantity > 0 && !wine.isReadOnly,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(34.dp)
@@ -938,7 +1002,7 @@ fun WineTileCard(
                 Icon(
                     imageVector = Icons.Default.LocalDrink,
                     contentDescription = "Drink Bottle",
-                    tint = if (wine.quantity > 0) CellarGold else Color.Gray,
+                    tint = if (wine.quantity > 0 && !wine.isReadOnly) CellarGold else Color.Gray,
                     modifier = Modifier.size(14.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -995,13 +1059,21 @@ fun WineTableRowCard(
 
             // Wine & Vintage
             Column(modifier = Modifier.weight(2f)) {
-                Text(
-                    text = wine.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = wine.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    SharedEntryBadge(
+                        entry = wine,
+                        showOwner = false,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
                 val origin = listOfNotNull(
                     wine.country?.let { "${CountryHelper.getFlagForCountry(it)} $it" },
                     wine.region
@@ -1056,7 +1128,7 @@ fun WineTableRowCard(
                         CellarGold
                     }
                     Text(
-                        text = "${tier.symbol} ${tier.shortLabel}",
+                        text = "${tier.symbolFor(wine.currency)} ${tier.shortLabel}",
                         style = MaterialTheme.typography.labelSmall,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
@@ -1071,7 +1143,7 @@ fun WineTableRowCard(
                     )
                 } else if (wine.purchasePrice != null) {
                     Text(
-                        text = String.format("$%.2f", wine.purchasePrice),
+                        text = LocaleFormat.formatPrice(wine.purchasePrice, wine.currency),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1093,13 +1165,13 @@ fun WineTableRowCard(
                 Spacer(modifier = Modifier.width(4.dp))
                 IconButton(
                     onClick = onTickOff,
-                    enabled = wine.quantity > 0,
+                    enabled = wine.quantity > 0 && !wine.isReadOnly,
                     modifier = Modifier.size(28.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Remove,
                         contentDescription = "Drink 1 bottle",
-                        tint = if (wine.quantity > 0) WineRose else Color.Gray,
+                        tint = if (wine.quantity > 0 && !wine.isReadOnly) WineRose else Color.Gray,
                         modifier = Modifier.size(16.dp)
                     )
                 }

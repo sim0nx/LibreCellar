@@ -7,6 +7,8 @@ import java.io.File
 import org.librecellar.data.api.WineApiService
 import org.librecellar.data.model.AssignSlotRequest
 import org.librecellar.data.model.CellarLocation
+import org.librecellar.data.model.CollectionInfo
+import org.librecellar.data.model.DefaultCollectionUpdate
 import org.librecellar.data.model.Supplier
 import org.librecellar.data.model.Wine
 import org.librecellar.ui.components.WineImageHelper
@@ -14,7 +16,10 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -22,6 +27,8 @@ import kotlinx.coroutines.withContext
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
+import org.json.JSONObject
+import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import java.security.SecureRandom
@@ -75,10 +82,6 @@ class WineRepository(private val context: Context) {
     private val _isBackendOnline = MutableStateFlow(false)
     val isBackendOnline: StateFlow<Boolean> = _isBackendOnline.asStateFlow()
 
-    // Persistent User UUIDv4 identifying this user
-    private val _userUuid = MutableStateFlow(WineImageHelper.getUserUuid(context))
-    val userUuid: StateFlow<String> = _userUuid.asStateFlow()
-
     // State flows for UI (Initialized empty with no sample data)
     private val _wines = MutableStateFlow<List<Wine>>(emptyList())
     val wines: StateFlow<List<Wine>> = _wines.asStateFlow()
@@ -128,6 +131,68 @@ class WineRepository(private val context: Context) {
     suspend fun updatePriceTierMarkingEnabled(enabled: Boolean) = withContext(Dispatchers.IO) {
         prefs.edit().putBoolean("wine_price_tier_marking", enabled).apply()
         _isPriceTierMarkingEnabled.value = enabled
+    }
+
+    // Collections visible to the logged-in user and where their new entries go (multi-user backend)
+    private val _collections = MutableStateFlow<List<CollectionInfo>>(emptyList())
+    val collections: StateFlow<List<CollectionInfo>> = _collections.asStateFlow()
+
+    private val _defaultCollection = MutableStateFlow<String?>(null)
+    val defaultCollection: StateFlow<String?> = _defaultCollection.asStateFlow()
+
+    private val _currentUsername = MutableStateFlow<String?>(null)
+    val currentUsername: StateFlow<String?> = _currentUsername.asStateFlow()
+
+    /** Loads the user's collections and default collection; a no-op on single-user backends. */
+    suspend fun refreshCollections() = withContext(Dispatchers.IO) {
+        try {
+            val me = apiService.getMe()
+            val cols = apiService.getCollections()
+            if (me.isSuccessful && cols.isSuccessful) {
+                _currentUsername.value = me.body()?.username
+                _defaultCollection.value = me.body()?.defaultCollection
+                _collections.value = cols.body().orEmpty()
+            } else {
+                _collections.value = emptyList()
+            }
+        } catch (e: Exception) {
+            Log.w("WineRepository", "Could not load collections", e)
+        }
+    }
+
+    /** Chooses the collection new entries go to: [owner] username, or null for the user's own. */
+    suspend fun updateDefaultCollection(owner: String?): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val resp = apiService.setDefaultCollection(DefaultCollectionUpdate(owner))
+            resp.body()?.takeIf { resp.isSuccessful }?.let {
+                _defaultCollection.value = it.defaultCollection
+                return@withContext true
+            }
+        } catch (e: Exception) {
+            Log.w("WineRepository", "Could not set default collection", e)
+        }
+        false
+    }
+
+    // Wine list filters for entries of collections shared with the user (persisted across restarts)
+    private val _hideReadOnlyShared = MutableStateFlow(
+        prefs.getBoolean("wine_filter_hide_read_only_shared", false)
+    )
+    val hideReadOnlyShared: StateFlow<Boolean> = _hideReadOnlyShared.asStateFlow()
+
+    private val _hideWritableShared = MutableStateFlow(
+        prefs.getBoolean("wine_filter_hide_writable_shared", false)
+    )
+    val hideWritableShared: StateFlow<Boolean> = _hideWritableShared.asStateFlow()
+
+    suspend fun updateHideReadOnlyShared(hide: Boolean) = withContext(Dispatchers.IO) {
+        prefs.edit().putBoolean("wine_filter_hide_read_only_shared", hide).apply()
+        _hideReadOnlyShared.value = hide
+    }
+
+    suspend fun updateHideWritableShared(hide: Boolean) = withContext(Dispatchers.IO) {
+        prefs.edit().putBoolean("wine_filter_hide_writable_shared", hide).apply()
+        _hideWritableShared.value = hide
     }
 
     fun suggestPriceTier(price: Double?): org.librecellar.data.model.WinePriceTier {
@@ -180,6 +245,9 @@ class WineRepository(private val context: Context) {
     }
 
     companion object {
+        // Backend page size used for all paginated lists
+        private const val PAGE_SIZE = 20
+
         val DEFAULT_KNOWN_GRAPES = listOf(
             "Cabernet Sauvignon", "Merlot", "Pinot Noir", "Chardonnay", "Sauvignon Blanc",
             "Syrah", "Shiraz", "Nebbiolo", "Sangiovese", "Tempranillo", "Riesling",
@@ -224,15 +292,15 @@ class WineRepository(private val context: Context) {
             .readTimeout(5, TimeUnit.SECONDS)
             .addInterceptor(logging)
 
-        // Attach User ID (UUIDv4) and Basic Auth headers
-        clientBuilder.addInterceptor { chain ->
-            val requestBuilder = chain.request().newBuilder()
-                .header("X-User-Id", _userUuid.value)
-            if (user.isNotBlank()) {
+        // Attach Basic Auth header; the backend identifies the user from these credentials
+        if (user.isNotBlank()) {
+            clientBuilder.addInterceptor { chain ->
                 val authHeader = Credentials.basic(user.trim(), pass)
-                requestBuilder.header("Authorization", authHeader)
+                val newRequest = chain.request().newBuilder()
+                    .header("Authorization", authHeader)
+                    .build()
+                chain.proceed(newRequest)
             }
-            chain.proceed(requestBuilder.build())
         }
 
         // Handle SSL certificate validation toggle
@@ -314,14 +382,12 @@ class WineRepository(private val context: Context) {
             // 3. Both health and protected endpoints succeeded! Mark backend as online
             _isBackendOnline.value = true
 
-            // 4. Push all local-only data to the backend server
-            val pushResult = pushLocalOnlyDataAndSync()
+            // 4. Load everything from the server, which manages all data
+            syncFromBackend()
+            refreshCollections()
 
-            val syncMsg = if (pushResult.first + pushResult.second + pushResult.third > 0) {
-                "Pushed local data: ${pushResult.first} wines, ${pushResult.second} racks, ${pushResult.third} merchants."
-            } else {
-                "Local data is synchronized with backend server."
-            }
+            val syncMsg = "Loaded ${_wines.value.size} wines, ${_locations.value.size} racks, " +
+                    "${_suppliers.value.size} merchants from the server."
 
             ConnectionTestResult(
                 isSuccess = true,
@@ -414,95 +480,18 @@ class WineRepository(private val context: Context) {
         results
     }
 
-    /**
-     * Pushes all local-only wines, cellar locations, and merchants to the remote backend,
-     * then refreshes local memory with the complete paginated remote dataset.
-     * Returns Triple(pushedWines, pushedLocations, pushedSuppliers).
-     */
-    suspend fun pushLocalOnlyDataAndSync(): Triple<Int, Int, Int> = withContext(Dispatchers.IO) {
-        try {
-            // 1. Fetch current remote datasets with pagination (limit 20)
-            val remoteSuppliers = fetchAllSuppliersPaginated(limit = 20)
-            val remoteLocations = fetchAllLocationsPaginated(limit = 20)
-            val remoteWines = fetchAllWinesPaginated(limit = 20)
-
-            val remoteSupplierIds = remoteSuppliers.map { it.id }.toSet()
-            val remoteSupplierNames = remoteSuppliers.map { it.name.trim().lowercase() }.toSet()
-
-            val remoteLocationIds = remoteLocations.map { it.id }.toSet()
-            val remoteLocationNames = remoteLocations.map { it.name.trim().lowercase() }.toSet()
-
-            val remoteWineIds = remoteWines.map { it.id }.toSet()
-            val remoteWineKeys = remoteWines.map { "${it.name.trim().lowercase()}_${it.vintage}" }.toSet()
-
-            var pushedSuppliersCount = 0
-            var pushedLocationsCount = 0
-            var pushedWinesCount = 0
-
-            // 2. Push local suppliers missing on backend
-            for (localSup in _suppliers.value) {
-                val alreadyExists = localSup.id in remoteSupplierIds || localSup.name.trim().lowercase() in remoteSupplierNames
-                if (!alreadyExists) {
-                    try {
-                        val resp = apiService.createSupplier(localSup)
-                        if (resp.isSuccessful) pushedSuppliersCount++
-                    } catch (e: Exception) {
-                        Log.w("WineRepository", "Error pushing local supplier ${localSup.name}", e)
-                    }
-                }
-            }
-
-            // 3. Push local locations/racks missing on backend
-            for (localLoc in _locations.value) {
-                val alreadyExists = localLoc.id in remoteLocationIds || localLoc.name.trim().lowercase() in remoteLocationNames
-                if (!alreadyExists) {
-                    try {
-                        val resp = apiService.createCellarLocation(localLoc)
-                        if (resp.isSuccessful) pushedLocationsCount++
-                    } catch (e: Exception) {
-                        Log.w("WineRepository", "Error pushing local location ${localLoc.name}", e)
-                    }
-                }
-            }
-
-            // 4. Push local wines missing on backend
-            for (localWine in _wines.value) {
-                val wineKey = "${localWine.name.trim().lowercase()}_${localWine.vintage}"
-                val alreadyExists = localWine.id in remoteWineIds || wineKey in remoteWineKeys
-                if (!alreadyExists) {
-                    try {
-                        val resp = apiService.createWine(localWine)
-                        if (resp.isSuccessful) pushedWinesCount++
-                    } catch (e: Exception) {
-                        Log.w("WineRepository", "Error pushing local wine ${localWine.name}", e)
-                    }
-                }
-            }
-
-            // 5. Re-fetch complete merged dataset using pagination (limit 20)
-            val updatedWines = fetchAllWinesPaginated(limit = 20)
-            _wines.value = updatedWines
-            val updatedLocations = fetchAllLocationsPaginated(limit = 20)
-            _locations.value = updatedLocations
-            val updatedSuppliers = fetchAllSuppliersPaginated(limit = 20)
-            _suppliers.value = updatedSuppliers
-            _knownGrapes.value = computeAllKnownGrapes()
-
-            Triple(pushedWinesCount, pushedLocationsCount, pushedSuppliersCount)
-        } catch (e: Exception) {
-            Log.e("WineRepository", "Error pushing local data and syncing", e)
-            Triple(0, 0, 0)
-        }
-    }
-
     private suspend fun syncFromBackend() = withContext(Dispatchers.IO) {
         try {
-            val wines = fetchAllWinesPaginated(limit = 20)
+            val wines = fetchAllWinesPaginated(limit = PAGE_SIZE)
             _wines.value = wines
-            val locations = fetchAllLocationsPaginated(limit = 20)
+            _wineCurrentPage.value = loadedPages(1, wines.size)
+            _hasMoreWines.value = false
+            val locations = fetchAllLocationsPaginated(limit = PAGE_SIZE)
             _locations.value = locations
-            val suppliers = fetchAllSuppliersPaginated(limit = 20)
+            val suppliers = fetchAllSuppliersPaginated(limit = PAGE_SIZE)
             _suppliers.value = suppliers
+            _supplierCurrentPage.value = loadedPages(1, suppliers.size)
+            _hasMoreSuppliers.value = false
             _knownGrapes.value = computeAllKnownGrapes()
         } catch (e: Exception) {
             Log.e("WineRepository", "Error syncing with backend", e)
@@ -675,9 +664,8 @@ class WineRepository(private val context: Context) {
 
     /**
      * Uploads a bottle picture to the backend API.
-     * Stores image on backend in configurable path under the user's UUIDv4 subfolder,
-     * renamed to UUIDv7.<ext>.
-     * Only the filename is returned and saved in backend DB.
+     * The backend stores it in the authenticated user's collection, renamed to UUIDv7.<ext>.
+     * Only the filename is returned and saved in backend DB. Throws if the upload fails.
      */
     suspend fun uploadBottleImage(pathOrUri: String): String = withContext(Dispatchers.IO) {
         if (pathOrUri.isBlank() || WineImageHelper.isPreset(pathOrUri)) {
@@ -698,7 +686,6 @@ class WineRepository(private val context: Context) {
         WineImageHelper.uploadImageToBackend(
             context = context,
             apiService = apiService,
-            userUuid = _userUuid.value,
             sourceFile = sourceFile
         )
     }
@@ -718,235 +705,201 @@ class WineRepository(private val context: Context) {
         WineImageHelper.fetchAndCacheRemoteImage(
             context = context,
             filename = filename,
-            apiService = apiService,
-            userUuid = _userUuid.value
+            apiService = apiService
         )
     }
 
+    // --- Write operations ---
+    //
+    // The backend manages all data. Every operation only sends its REST request and, once the
+    // server accepted it, reloads the affected lists from the server; nothing is changed locally.
+    // Each returns whether the server accepted it; failures are reported via [operationErrors].
+
+    private enum class DataSet { WINES, LOCATIONS, SUPPLIERS }
+
+    private val _operationErrors = MutableSharedFlow<String>(extraBufferCapacity = 8)
+    val operationErrors: SharedFlow<String> = _operationErrors.asSharedFlow()
+
+    private suspend fun <T> sendToBackend(
+        action: String,
+        reload: Set<DataSet>,
+        call: suspend () -> Response<T>
+    ): Boolean {
+        val ok = try {
+            val resp = call()
+            if (!resp.isSuccessful) {
+                _operationErrors.tryEmit("$action failed: ${describeError(resp)}")
+            }
+            resp.isSuccessful
+        } catch (e: Exception) {
+            Log.w("WineRepository", "$action failed", e)
+            _isBackendOnline.value = false
+            _operationErrors.tryEmit("$action failed: server not reachable")
+            false
+        }
+        if (ok) reloadFromBackend(reload)
+        return ok
+    }
+
+    private fun describeError(resp: Response<*>): String {
+        val detail = try {
+            resp.errorBody()?.string()?.let { JSONObject(it).optString("detail") }
+        } catch (e: Exception) {
+            null
+        }
+        return detail?.takeIf { it.isNotBlank() } ?: "HTTP ${resp.code()}"
+    }
+
+    private suspend fun reloadFromBackend(sets: Set<DataSet>) {
+        if (DataSet.WINES in sets) reloadWines()
+        if (DataSet.LOCATIONS in sets) {
+            _locations.value = fetchAllLocationsPaginated(limit = PAGE_SIZE)
+        }
+        if (DataSet.SUPPLIERS in sets) reloadSuppliers()
+    }
+
+    private data class PageLoad<T>(val items: List<T>, val pages: Int, val hasMore: Boolean)
+
+    /** Loads pages 1..[pages] again, so the lists keep what the user already scrolled through. */
+    private suspend fun <T> loadPages(pages: Int, fetch: suspend (Int) -> Response<List<T>>): PageLoad<T>? {
+        val items = mutableListOf<T>()
+        for (page in 1..pages) {
+            val resp = try {
+                fetch(page)
+            } catch (e: Exception) {
+                Log.w("WineRepository", "Reload of page $page failed", e)
+                return null
+            }
+            if (!resp.isSuccessful) return null
+            val batch = resp.body().orEmpty()
+            items += batch
+            if (batch.size < PAGE_SIZE) return PageLoad(items, page, hasMore = false)
+        }
+        return PageLoad(items, pages, hasMore = true)
+    }
+
+    private fun loadedPages(currentPage: Int, loadedItems: Int): Int =
+        maxOf(1, currentPage, (loadedItems + PAGE_SIZE - 1) / PAGE_SIZE)
+
+    private suspend fun reloadWines() {
+        val load = loadPages(loadedPages(_wineCurrentPage.value, _wines.value.size)) {
+            apiService.getWines(page = it, limit = PAGE_SIZE)
+        } ?: return
+        _wines.value = load.items
+        _wineCurrentPage.value = load.pages
+        _hasMoreWines.value = load.hasMore
+        _knownGrapes.value = computeAllKnownGrapes()
+    }
+
+    private suspend fun reloadSuppliers() {
+        val load = loadPages(loadedPages(_supplierCurrentPage.value, _suppliers.value.size)) {
+            apiService.getSuppliers(page = it, limit = PAGE_SIZE)
+        } ?: return
+        _suppliers.value = load.items
+        _supplierCurrentPage.value = load.pages
+        _hasMoreSuppliers.value = load.hasMore
+    }
+
+    /** Uploads a picture that still refers to a file on the device; null if that failed. */
+    private suspend fun withUploadedPhoto(wine: Wine): Wine? {
+        val photo = wine.photoUrl
+        if (photo.isNullOrBlank() || WineImageHelper.isPreset(photo) ||
+            !(photo.startsWith("/") || photo.startsWith("file:") || photo.startsWith("content:"))
+        ) {
+            return wine
+        }
+        return try {
+            wine.copy(photoUrl = uploadBottleImage(photo))
+        } catch (e: Exception) {
+            Log.w("WineRepository", "Picture upload failed", e)
+            _operationErrors.tryEmit("Saving wine failed: picture could not be uploaded")
+            null
+        }
+    }
+
     // --- Wine Operations ---
-    suspend fun addWine(wine: Wine): Wine = withContext(Dispatchers.IO) {
-        var finalWine = wine
-        val photo = wine.photoUrl
-        if (!photo.isNullOrBlank() && !WineImageHelper.isPreset(photo) &&
-            (photo.startsWith("/") || photo.startsWith("file:") || photo.startsWith("content:"))
-        ) {
-            val uploadedFilename = uploadBottleImage(photo)
-            finalWine = finalWine.copy(photoUrl = uploadedFilename)
-        }
-
-        if (_isBackendOnline.value) {
-            try {
-                val resp = apiService.createWine(finalWine)
-                if (resp.isSuccessful && resp.body() != null) {
-                    finalWine = resp.body()!!
-                }
-            } catch (e: Exception) {
-                Log.w("WineRepository", "Backend addWine failed, applying locally", e)
-            }
-        }
-
-        registerGrapes(finalWine.varietalList)
-        _wines.value = _wines.value + finalWine
-        _knownGrapes.value = computeAllKnownGrapes()
-        finalWine
+    suspend fun addWine(wine: Wine): Boolean = withContext(Dispatchers.IO) {
+        val toSend = withUploadedPhoto(wine) ?: return@withContext false
+        val ok = sendToBackend("Saving wine", setOf(DataSet.WINES)) { apiService.createWine(toSend) }
+        if (ok) registerGrapes(wine.varietalList)
+        ok
     }
 
-    suspend fun updateWine(wine: Wine): Wine = withContext(Dispatchers.IO) {
-        var finalWine = wine
-        val photo = wine.photoUrl
-        if (!photo.isNullOrBlank() && !WineImageHelper.isPreset(photo) &&
-            (photo.startsWith("/") || photo.startsWith("file:") || photo.startsWith("content:"))
-        ) {
-            val uploadedFilename = uploadBottleImage(photo)
-            finalWine = finalWine.copy(photoUrl = uploadedFilename)
+    suspend fun updateWine(wine: Wine): Boolean = withContext(Dispatchers.IO) {
+        val toSend = withUploadedPhoto(wine) ?: return@withContext false
+        val ok = sendToBackend("Saving wine", setOf(DataSet.WINES)) {
+            apiService.updateWine(toSend.id, toSend)
         }
-
-        if (_isBackendOnline.value) {
-            try {
-                apiService.updateWine(finalWine.id, finalWine)
-            } catch (e: Exception) {
-                Log.w("WineRepository", "Backend updateWine failed", e)
-            }
-        }
-        registerGrapes(finalWine.varietalList)
-        _wines.value = _wines.value.map { if (it.id == finalWine.id) finalWine else it }
-        _knownGrapes.value = computeAllKnownGrapes()
-        finalWine
+        if (ok) registerGrapes(wine.varietalList)
+        ok
     }
 
-    suspend fun deleteWine(id: String) = withContext(Dispatchers.IO) {
-        val target = _wines.value.find { it.id == id }
-        val photo = target?.photoUrl
-        if (!photo.isNullOrBlank() && !WineImageHelper.isPreset(photo)) {
-            // Removing a wine in the app should remove the cached picture as well on the android device
-            WineImageHelper.removeCachedImage(context, photo)
-            if (_isBackendOnline.value) {
-                try {
-                    apiService.deleteImage(photo, _userUuid.value)
-                } catch (e: Exception) {
-                    Log.w("WineRepository", "Backend deleteImage failed", e)
-                }
-            }
-        }
-        if (_isBackendOnline.value) {
-            try {
-                apiService.deleteWine(id)
-            } catch (e: Exception) {
-                Log.w("WineRepository", "Backend deleteWine failed", e)
-            }
-        }
-        _wines.value = _wines.value.filterNot { it.id == id }
+    suspend fun deleteWine(id: String): Boolean = withContext(Dispatchers.IO) {
+        // The backend also removes the wine's picture once nothing refers to it
+        val photo = _wines.value.find { it.id == id }?.photoUrl
+        val ok = sendToBackend("Deleting wine", setOf(DataSet.WINES)) { apiService.deleteWine(id) }
+        if (ok) WineImageHelper.removeCachedImage(context, photo)
+        ok
     }
 
-
-    suspend fun decrementQuantity(id: String): Int = withContext(Dispatchers.IO) {
-        var newQty = 0
-        val target = _wines.value.find { it.id == id }
-        if (target != null) {
-            newQty = maxOf(0, target.quantity - 1)
-            val updated = target.copy(
-                quantity = newQty,
-                locationId = if (newQty == 0) null else target.locationId,
-                slotRow = if (newQty == 0) null else target.slotRow,
-                slotColumn = if (newQty == 0) null else target.slotColumn,
-                slotLabel = if (newQty == 0) null else target.slotLabel
-            )
-            updateWine(updated)
-
-            if (_isBackendOnline.value) {
-                try {
-                    apiService.decrementInventory(id)
-                } catch (e: Exception) {
-                    Log.w("WineRepository", "Backend decrement failed", e)
-                }
-            }
-        }
-        newQty
+    suspend fun decrementQuantity(id: String): Boolean = withContext(Dispatchers.IO) {
+        sendToBackend("Ticking off bottle", setOf(DataSet.WINES)) { apiService.decrementInventory(id) }
     }
 
-    suspend fun assignSlot(wineId: String, locationId: String?, row: Int?, col: Int?): Wine? =
+    suspend fun incrementQuantity(id: String): Boolean = withContext(Dispatchers.IO) {
+        sendToBackend("Adding bottle", setOf(DataSet.WINES)) { apiService.incrementInventory(id) }
+    }
+
+    /** Places a wine in a rack slot, or takes it out of its rack when [locationId] is null. */
+    suspend fun assignSlot(wineId: String, locationId: String?, row: Int?, col: Int?): Boolean =
         withContext(Dispatchers.IO) {
-            val target = _wines.value.find { it.id == wineId } ?: return@withContext null
-            val label = if (row != null && col != null) "Row ${row + 1}, Slot ${col + 1}" else null
-            val updated = target.copy(
-                locationId = locationId,
-                slotRow = row,
-                slotColumn = col,
-                slotLabel = label
-            )
-
-            if (_isBackendOnline.value && locationId != null) {
-                try {
-                    apiService.assignSlot(
-                        locationId,
-                        AssignSlotRequest(wineId, locationId, row, col)
-                    )
-                } catch (e: Exception) {
-                    Log.w("WineRepository", "Backend assignSlot failed", e)
-                }
+            // The path names a rack; the request body decides (no location = unassign)
+            val pathLocation = locationId
+                ?: _wines.value.find { it.id == wineId }?.locationId
+                ?: "unassigned"
+            sendToBackend("Placing bottle", setOf(DataSet.WINES)) {
+                apiService.assignSlot(pathLocation, AssignSlotRequest(wineId, locationId, row, col))
             }
-
-            updateWine(updated)
-            updated
         }
 
     fun findWineByBarcode(barcode: String): Wine? {
         val trimmed = barcode.trim()
         if (trimmed.isEmpty()) return null
-        return _wines.value.find { it.barcode?.trim() == trimmed }
+        // Prefer the user's own bottle, then one of an editable shared collection
+        return _wines.value.filter { it.barcode?.trim() == trimmed }
+            .minByOrNull { it.collectionAccess.ordinal }
     }
 
     // --- Cellar Location Operations ---
-    suspend fun addLocation(location: CellarLocation): CellarLocation = withContext(Dispatchers.IO) {
-        var finalLoc = location
-        if (_isBackendOnline.value) {
-            try {
-                val resp = apiService.createCellarLocation(location)
-                if (resp.isSuccessful && resp.body() != null) {
-                    finalLoc = resp.body()!!
-                }
-            } catch (e: Exception) {
-                Log.w("WineRepository", "Backend addLocation failed", e)
-            }
-        }
-        _locations.value = _locations.value + finalLoc
-        finalLoc
+    suspend fun addLocation(location: CellarLocation): Boolean = withContext(Dispatchers.IO) {
+        sendToBackend("Saving rack", setOf(DataSet.LOCATIONS)) { apiService.createCellarLocation(location) }
     }
 
-    suspend fun updateLocation(location: CellarLocation): CellarLocation = withContext(Dispatchers.IO) {
-        if (_isBackendOnline.value) {
-            try {
-                apiService.updateCellarLocation(location.id, location)
-            } catch (e: Exception) {
-                Log.w("WineRepository", "Backend updateCellarLocation failed", e)
-            }
+    suspend fun updateLocation(location: CellarLocation): Boolean = withContext(Dispatchers.IO) {
+        // Resizing can free slots on the server, so wines are reloaded as well
+        sendToBackend("Saving rack", setOf(DataSet.LOCATIONS, DataSet.WINES)) {
+            apiService.updateCellarLocation(location.id, location)
         }
-        _locations.value = _locations.value.map { if (it.id == location.id) location else it }
-        _wines.value = _wines.value.map { wine ->
-            if (wine.locationId == location.id) {
-                val rowOutOfBounds = wine.slotRow != null && wine.slotRow >= location.rows
-                val colOutOfBounds = wine.slotColumn != null && wine.slotColumn >= location.columns
-                if (rowOutOfBounds || colOutOfBounds) {
-                    wine.copy(slotRow = null, slotColumn = null, slotLabel = "Unassigned slot")
-                } else wine
-            } else wine
-        }
-        location
     }
 
-    suspend fun deleteLocation(id: String) = withContext(Dispatchers.IO) {
-        if (_isBackendOnline.value) {
-            try {
-                apiService.deleteCellarLocation(id)
-            } catch (e: Exception) {
-                Log.w("WineRepository", "Backend deleteLocation failed", e)
-            }
+    suspend fun deleteLocation(id: String): Boolean = withContext(Dispatchers.IO) {
+        sendToBackend("Deleting rack", setOf(DataSet.LOCATIONS, DataSet.WINES)) {
+            apiService.deleteCellarLocation(id)
         }
-        _wines.value = _wines.value.map { wine ->
-            if (wine.locationId == id) {
-                wine.copy(locationId = null, slotRow = null, slotColumn = null, slotLabel = null)
-            } else wine
-        }
-        _locations.value = _locations.value.filterNot { it.id == id }
     }
 
     // --- Supplier Operations ---
-    suspend fun addSupplier(supplier: Supplier): Supplier = withContext(Dispatchers.IO) {
-        var finalSup = supplier
-        if (_isBackendOnline.value) {
-            try {
-                val resp = apiService.createSupplier(supplier)
-                if (resp.isSuccessful && resp.body() != null) {
-                    finalSup = resp.body()!!
-                }
-            } catch (e: Exception) {
-                Log.w("WineRepository", "Backend addSupplier failed", e)
-            }
-        }
-        _suppliers.value = _suppliers.value + finalSup
-        finalSup
+    suspend fun addSupplier(supplier: Supplier): Boolean = withContext(Dispatchers.IO) {
+        sendToBackend("Saving merchant", setOf(DataSet.SUPPLIERS)) { apiService.createSupplier(supplier) }
     }
 
-    suspend fun updateSupplier(supplier: Supplier): Supplier = withContext(Dispatchers.IO) {
-        if (_isBackendOnline.value) {
-            try {
-                apiService.updateSupplier(supplier.id, supplier)
-            } catch (e: Exception) {
-                Log.w("WineRepository", "Backend updateSupplier failed", e)
-            }
+    suspend fun updateSupplier(supplier: Supplier): Boolean = withContext(Dispatchers.IO) {
+        sendToBackend("Saving merchant", setOf(DataSet.SUPPLIERS)) {
+            apiService.updateSupplier(supplier.id, supplier)
         }
-        _suppliers.value = _suppliers.value.map { if (it.id == supplier.id) supplier else it }
-        supplier
     }
 
-    suspend fun deleteSupplier(id: String) = withContext(Dispatchers.IO) {
-        if (_isBackendOnline.value) {
-            try {
-                apiService.deleteSupplier(id)
-            } catch (e: Exception) {
-                Log.w("WineRepository", "Backend deleteSupplier failed", e)
-            }
-        }
-        _suppliers.value = _suppliers.value.filterNot { it.id == id }
+    suspend fun deleteSupplier(id: String): Boolean = withContext(Dispatchers.IO) {
+        sendToBackend("Deleting merchant", setOf(DataSet.SUPPLIERS)) { apiService.deleteSupplier(id) }
     }
 }

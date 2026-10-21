@@ -29,6 +29,13 @@ enum class WinePriceTier(
     EXPENSIVE("EXPENSIVE", "Expensive / Premium", "Expensive", "$$$$", "#C75D4D"),
     VERY_EXPENSIVE("VERY_EXPENSIVE", "Very Expensive / Prestige", "Very Expensive", "$$$$$", "#88253B");
 
+    /** Tier marking in the device's currency, e.g. "€€€" for MEDIUM. */
+    val currencySymbol: String
+        get() = LocaleFormat.tierSymbol(symbol.length)
+
+    /** Tier marking in the currency with ISO 4217 [currencyCode], e.g. "£££". */
+    fun symbolFor(currencyCode: String?): String = LocaleFormat.tierSymbol(symbol.length, currencyCode)
+
     companion object {
         fun fromKey(key: String?): WinePriceTier? {
             if (key == null) return null
@@ -37,11 +44,14 @@ enum class WinePriceTier(
 
         /**
          * Dynamically calculates the price tier based on the distribution of wine prices in the user's cellar.
+         * Only wines priced in the same currency are compared (no exchange rates are applied).
          */
-        fun calculateDynamicTier(price: Double?, existingWines: List<Wine>): WinePriceTier {
+        fun calculateDynamicTier(price: Double?, existingWines: List<Wine>, currency: String? = null): WinePriceTier {
             if (price == null || price <= 0.0) return NORMAL
 
+            val targetCurrency = LocaleFormat.currencyOf(currency).currencyCode
             val knownPrices = existingWines
+                .filter { it.effectiveCurrency == targetCurrency }
                 .mapNotNull { it.purchasePrice }
                 .filter { it > 0.0 }
                 .sorted()
@@ -79,6 +89,38 @@ enum class WinePriceTier(
     }
 }
 
+/**
+ * Access level the backend reports for an entry of a (possibly shared) collection.
+ * Entries created locally and not yet synced have no access value and count as own.
+ */
+enum class CollectionAccess(val key: String) {
+    OWNER("owner"),
+    WRITE("write"),
+    READ("read");
+
+    companion object {
+        fun fromKey(key: String?): CollectionAccess =
+            entries.find { it.key == key } ?: OWNER
+    }
+}
+
+/** Wines, cellar locations and merchants all belong to a collection that may be shared with the user. */
+interface SharedEntry {
+    val owner: String?
+    val access: String?
+
+    val collectionAccess: CollectionAccess
+        get() = CollectionAccess.fromKey(access)
+
+    /** Shared with the user read-only: it can be viewed but not changed. */
+    val isReadOnly: Boolean
+        get() = collectionAccess == CollectionAccess.READ
+
+    /** Belongs to someone else's collection the user may edit, e.g. a household collection. */
+    val isSharedWritable: Boolean
+        get() = collectionAccess == CollectionAccess.WRITE
+}
+
 @JsonClass(generateAdapter = true)
 data class Wine(
     @Json(name = "id") val id: String = UUID.randomUUID().toString(),
@@ -96,6 +138,8 @@ data class Wine(
     @Json(name = "tasting_rating") val tastingRating: Int? = null, // 1 to 5 stars
     @Json(name = "comments") val comments: String? = null,
     @Json(name = "purchase_price") val purchasePrice: Double? = null,
+    // ISO 4217 code of purchasePrice, e.g. "EUR"; null for wines saved before currencies existed
+    @Json(name = "currency") val currency: String? = null,
     @Json(name = "purchase_location") val purchaseLocation: String? = null, // Vendor/Shop name
     @Json(name = "photo_url") val photoUrl: String? = null,
     @Json(name = "barcode") val barcode: String? = null,
@@ -106,8 +150,11 @@ data class Wine(
     @Json(name = "slot_row") val slotRow: Int? = null,
     @Json(name = "slot_column") val slotColumn: Int? = null,
     @Json(name = "slot_label") val slotLabel: String? = null,
-    @Json(name = "wine_type") val wineType: String = WineType.RED.name
-) {
+    @Json(name = "wine_type") val wineType: String = WineType.RED.name,
+    // Set by the backend: collection owner and the user's access to it (see CollectionAccess)
+    @Json(name = "owner") override val owner: String? = null,
+    @Json(name = "access") override val access: String? = null
+) : SharedEntry {
     val isInCellar: Boolean
         get() = !locationId.isNullOrBlank()
 
@@ -121,6 +168,10 @@ data class Wine(
             }
         }
 
+    /** Currency of the price; wines without one are shown in the device's currency. */
+    val effectiveCurrency: String
+        get() = LocaleFormat.currencyOf(currency).currencyCode
+
     val varietalList: List<String>
         get() = varietal?.split(",")
             ?.map { it.trim() }
@@ -129,7 +180,7 @@ data class Wine(
 
     fun getResolvedPriceTier(allWines: List<Wine>): WinePriceTier {
         return WinePriceTier.fromKey(priceTier)
-            ?: WinePriceTier.calculateDynamicTier(purchasePrice, allWines)
+            ?: WinePriceTier.calculateDynamicTier(purchasePrice, allWines, currency)
     }
 }
 
@@ -142,10 +193,20 @@ data class CellarLocation(
     @Json(name = "description") val description: String? = null,
     @Json(name = "temperature_celsius") val temperatureCelsius: Double? = null,
     @Json(name = "humidity_percent") val humidityPercent: Double? = null,
-    @Json(name = "color_hex") val colorHex: String? = "#6B1D2F"
-) {
+    @Json(name = "color_hex") val colorHex: String? = "#6B1D2F",
+    @Json(name = "owner") override val owner: String? = null,
+    @Json(name = "access") override val access: String? = null
+) : SharedEntry {
     val totalSlots: Int
         get() = rows * columns
+
+    /**
+     * Whether [wine] may be placed in this rack: the rack must be editable and, for a wine that
+     * already belongs to a collection, in the same collection (the backend enforces this too).
+     * New wines join the collection of the rack they are placed in.
+     */
+    fun acceptsWine(wine: Wine?): Boolean =
+        !isReadOnly && (wine?.owner == null || owner == null || owner == wine.owner)
 }
 
 @JsonClass(generateAdapter = true)
@@ -157,8 +218,10 @@ data class Supplier(
     @Json(name = "country") val country: String? = null,
     @Json(name = "website") val website: String? = null,
     @Json(name = "notes") val notes: String? = null,
-    @Json(name = "date_added") val dateAdded: String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-)
+    @Json(name = "date_added") val dateAdded: String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()),
+    @Json(name = "owner") override val owner: String? = null,
+    @Json(name = "access") override val access: String? = null
+) : SharedEntry
 
 @JsonClass(generateAdapter = true)
 data class AssignSlotRequest(
@@ -179,7 +242,30 @@ data class DecrementInventoryResponse(
 @JsonClass(generateAdapter = true)
 data class ImageUploadResponse(
     @Json(name = "filename") val filename: String,
-    @Json(name = "user_id") val userId: String? = null,
     @Json(name = "url") val url: String? = null
 )
 
+
+@JsonClass(generateAdapter = true)
+data class UserInfo(
+    @Json(name = "username") val username: String,
+    @Json(name = "is_admin") val isAdmin: Boolean = false,
+    // Owner username of the collection new entries go to
+    @Json(name = "default_collection") val defaultCollection: String? = null
+)
+
+/** A collection the user can access: their own ("owner") or one shared with them ("write"/"read"). */
+@JsonClass(generateAdapter = true)
+data class CollectionInfo(
+    @Json(name = "owner") val owner: String,
+    @Json(name = "permission") val permission: String
+) {
+    val collectionAccess: CollectionAccess
+        get() = CollectionAccess.fromKey(permission)
+}
+
+@JsonClass(generateAdapter = true)
+data class DefaultCollectionUpdate(
+    // Null selects the user's own collection
+    @Json(name = "owner") val owner: String?
+)

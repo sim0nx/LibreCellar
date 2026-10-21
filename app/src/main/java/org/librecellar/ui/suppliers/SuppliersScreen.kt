@@ -73,6 +73,7 @@ import org.librecellar.data.model.CountryHelper
 import org.librecellar.data.model.Supplier
 import org.librecellar.data.model.Wine
 import org.librecellar.ui.components.CountryDropdownSelect
+import org.librecellar.ui.components.SharedEntryBadge
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundyLight
 import org.librecellar.ui.theme.WineRose
@@ -291,10 +292,11 @@ fun SuppliersScreen(
                                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                             )
                                         }
+                                        SharedEntryBadge(entry = supplier, modifier = Modifier.padding(top = 4.dp))
                                     }
 
-                                    // Action buttons: Edit and Delete
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                    // Action buttons: Edit and Delete (not for merchants shared read-only)
+                                    if (!supplier.isReadOnly) Row(verticalAlignment = Alignment.CenterVertically) {
                                         IconButton(
                                             onClick = { supplierToEdit = supplier },
                                             modifier = Modifier.testTag("edit_supplier_${supplier.id}")

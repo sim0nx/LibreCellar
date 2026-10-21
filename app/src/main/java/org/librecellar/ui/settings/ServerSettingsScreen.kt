@@ -21,7 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudDone
@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Https
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NoEncryption
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Shield
@@ -45,6 +46,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -64,6 +67,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -82,6 +86,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.librecellar.data.model.CollectionAccess
+import org.librecellar.data.model.LocaleFormat
 import org.librecellar.data.model.Wine
 import org.librecellar.data.model.WinePriceTier
 import org.librecellar.data.repository.ConnectionTestResult
@@ -105,6 +111,13 @@ fun ServerSettingsScreen(
     val isOnline by repository.isBackendOnline.collectAsState()
     val wines by repository.wines.collectAsState()
     val isPriceTierMarkingEnabled by repository.isPriceTierMarkingEnabled.collectAsState()
+    val collections by repository.collections.collectAsState()
+    val defaultCollection by repository.defaultCollection.collectAsState()
+    val currentBackendUser by repository.currentUsername.collectAsState()
+
+    LaunchedEffect(isOnline) {
+        if (isOnline) repository.refreshCollections()
+    }
 
     var urlInput by remember(currentUrl) { mutableStateOf(currentUrl) }
     var usernameInput by remember(currentUsername) { mutableStateOf(currentUsername) }
@@ -404,77 +417,6 @@ fun ServerSettingsScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Section 2b: User UUIDv4 Identity & Bottle Image Storage
-                val userUuid by repository.userUuid.collectAsState()
-                val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
-
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(imageVector = Icons.Default.Person, contentDescription = null, tint = CellarGold, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "User Identity (UUIDv4)",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = "Bottle pictures are uploaded to the backend server in a subfolder identified by your UUIDv4, renamed to UUIDv7.<extension>, and cached on your device.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Surface(
-                            color = MaterialTheme.colorScheme.surface,
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = userUuid,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = CellarGold,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                TextButton(
-                                    onClick = {
-                                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(userUuid))
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("User UUIDv4 copied to clipboard")
-                                        }
-                                    },
-                                    modifier = Modifier.testTag("copy_user_uuid_btn")
-                                ) {
-                                    Text("Copy", fontSize = 12.sp)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
                 // Section 3: Server SSL Certificate Validation Checkbox
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -560,6 +502,74 @@ fun ServerSettingsScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Section 3b: Collection new entries go to (only when a collection is shared read/write)
+                val writableCollections = collections.filter { it.collectionAccess != CollectionAccess.READ }
+                if (isOnline && writableCollections.size > 1) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(imageVector = Icons.Default.People, contentDescription = null, tint = CellarGold, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "New Entries Go To",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Text(
+                                text = "Collection that receives new wines, racks and merchants. Wines placed in a rack always join the rack's collection.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            writableCollections.forEach { collection ->
+                                val isOwn = collection.collectionAccess == CollectionAccess.OWNER
+                                val isSelected = collection.owner == (defaultCollection ?: currentBackendUser)
+                                val select = {
+                                    if (!isSelected) scope.launch {
+                                        val ok = repository.updateDefaultCollection(if (isOwn) null else collection.owner)
+                                        snackbarHostState.showSnackbar(
+                                            if (ok) "New entries now go to ${if (isOwn) "your own collection" else "${collection.owner}'s collection"}"
+                                            else "Could not change the default collection"
+                                        )
+                                    }
+                                }
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { select() }
+                                        .testTag("default_collection_${collection.owner}")
+                                ) {
+                                    RadioButton(
+                                        selected = isSelected,
+                                        onClick = { select() },
+                                        colors = RadioButtonDefaults.colors(selectedColor = WineBurgundyLight)
+                                    )
+                                    Text(
+                                        text = if (isOwn) "My own collection" else "${collection.owner}'s collection (shared)",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
                 // Section 4: Wine Price Range Markings Quick Setting
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -571,7 +581,7 @@ fun ServerSettingsScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(imageVector = Icons.Default.AttachMoney, contentDescription = null, tint = CellarGold, modifier = Modifier.size(20.dp))
+                            Icon(imageVector = Icons.Default.Payments, contentDescription = null, tint = CellarGold, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Wine Price Range Marking",
@@ -812,8 +822,10 @@ fun PriceRangeSettingsContent(
     onToggleEnabled: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Tier thresholds are shown in the device's currency, from wines priced in it
     val pricedWines = remember(wines) {
-        wines.mapNotNull { it.purchasePrice }.filter { it > 0.0 }.sorted()
+        wines.filter { it.effectiveCurrency == LocaleFormat.currency.currencyCode }
+            .mapNotNull { it.purchasePrice }.filter { it > 0.0 }.sorted()
     }
 
     Column(
@@ -853,7 +865,7 @@ fun PriceRangeSettingsContent(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.AttachMoney,
+                            imageVector = Icons.Default.Payments,
                             contentDescription = null,
                             tint = if (isPriceTierEnabled) CellarGold else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(24.dp)
@@ -995,7 +1007,7 @@ fun PriceRangeSettingsContent(
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Text(
-                                        text = tier.symbol,
+                                        text = tier.currencySymbol,
                                         color = Color.White,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 11.sp
@@ -1037,13 +1049,14 @@ fun PriceRangeSettingsContent(
 }
 
 private fun getThresholdDescription(tier: WinePriceTier, pricedWines: List<Double>): String {
+    val price = { value: Double -> LocaleFormat.formatPrice(value) }
     if (pricedWines.size < 3) {
         return when (tier) {
-            WinePriceTier.CHEAP -> "< $20.00"
-            WinePriceTier.NORMAL -> "$20.00 - $45.00"
-            WinePriceTier.MEDIUM -> "$45.00 - $95.00"
-            WinePriceTier.EXPENSIVE -> "$95.00 - $250.00"
-            WinePriceTier.VERY_EXPENSIVE -> "> $250.00"
+            WinePriceTier.CHEAP -> "< ${price(20.0)}"
+            WinePriceTier.NORMAL -> "${price(20.0)} - ${price(45.0)}"
+            WinePriceTier.MEDIUM -> "${price(45.0)} - ${price(95.0)}"
+            WinePriceTier.EXPENSIVE -> "${price(95.0)} - ${price(250.0)}"
+            WinePriceTier.VERY_EXPENSIVE -> "> ${price(250.0)}"
         }
     }
 
@@ -1058,11 +1071,11 @@ private fun getThresholdDescription(tier: WinePriceTier, pricedWines: List<Doubl
     val p80 = percentile(0.80)
 
     return when (tier) {
-        WinePriceTier.CHEAP -> "≤ $${String.format(java.util.Locale.US, "%.2f", p20)}"
-        WinePriceTier.NORMAL -> "$${String.format(java.util.Locale.US, "%.2f", p20)} - $${String.format(java.util.Locale.US, "%.2f", p40)}"
-        WinePriceTier.MEDIUM -> "$${String.format(java.util.Locale.US, "%.2f", p40)} - $${String.format(java.util.Locale.US, "%.2f", p60)}"
-        WinePriceTier.EXPENSIVE -> "$${String.format(java.util.Locale.US, "%.2f", p60)} - $${String.format(java.util.Locale.US, "%.2f", p80)}"
-        WinePriceTier.VERY_EXPENSIVE -> "> $${String.format(java.util.Locale.US, "%.2f", p80)}"
+        WinePriceTier.CHEAP -> "≤ ${price(p20)}"
+        WinePriceTier.NORMAL -> "${price(p20)} - ${price(p40)}"
+        WinePriceTier.MEDIUM -> "${price(p40)} - ${price(p60)}"
+        WinePriceTier.EXPENSIVE -> "${price(p60)} - ${price(p80)}"
+        WinePriceTier.VERY_EXPENSIVE -> "> ${price(p80)}"
     }
 }
 
@@ -1398,9 +1411,9 @@ def delete_supplier(id: str, user: str = Depends(authenticate), db: Session = De
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-# --- Bottle Pictures API (User UUIDv4 subfolder & UUIDv7 naming) ---
+# --- Bottle Pictures API (per-user subfolder & UUIDv7 naming) ---
 import os, time, uuid
-from fastapi import UploadFile, File, Header
+from fastapi import UploadFile, File
 from fastapi.responses import FileResponse
 
 IMAGE_DIR = os.getenv("LIBRECELLAR_IMAGE_DIR", "/path/to/librecellar/data/images")
@@ -1418,55 +1431,33 @@ def generate_uuidv7() -> str:
 @app.post("/api/images/upload")
 async def upload_image(
     file: UploadFile = File(...),
-    user_id: str = Header(..., alias="X-User-Id"),
     user: str = Depends(authenticate)
 ):
-    user_folder = os.path.join(IMAGE_DIR, user_id)
+    # Stored under a subfolder named after the authenticated user, renamed to UUIDv7.<extension>.
+    # Only the filename is saved in the database.
+    user_folder = os.path.join(IMAGE_DIR, user)
     os.makedirs(user_folder, exist_ok=True)
     ext = os.path.splitext(file.filename)[1].lower() if file.filename else ".jpg"
     if not ext:
         ext = ".jpg"
     filename = f"{generate_uuidv7()}{ext}"
-    dest_path = os.path.join(user_folder, filename)
-    with open(dest_path, "wb") as f:
-        content = await file.read()
-        f.write(content)
-    return {"filename": filename, "user_id": user_id, "url": f"/api/images/{filename}"}
+    with open(os.path.join(user_folder, filename), "wb") as f:
+        f.write(await file.read())
+    return {"filename": filename, "url": f"/api/images/{filename}"}
 
 @app.get("/api/images/{filename}")
-def get_image(
-    filename: str,
-    user_id: Optional[str] = Header(None, alias="X-User-Id"),
-    user: str = Depends(authenticate)
-):
-    if user_id:
-        file_path = os.path.join(IMAGE_DIR, user_id, filename)
-        if os.path.exists(file_path):
-            return FileResponse(file_path)
-    if os.path.exists(IMAGE_DIR):
-        for sub in os.listdir(IMAGE_DIR):
-            candidate = os.path.join(IMAGE_DIR, sub, filename)
-            if os.path.exists(candidate) and os.path.isfile(candidate):
-                return FileResponse(candidate)
-    raise HTTPException(status_code=404, detail="Image not found")
+def get_image(filename: str, user: str = Depends(authenticate)):
+    file_path = os.path.join(IMAGE_DIR, user, os.path.basename(filename))
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail="Image not found")
+    return FileResponse(file_path)
 
 @app.delete("/api/images/{filename}", status_code=204)
-def delete_image(
-    filename: str,
-    user_id: Optional[str] = Header(None, alias="X-User-Id"),
-    user: str = Depends(authenticate)
-):
-    if user_id:
-        file_path = os.path.join(IMAGE_DIR, user_id, filename)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            return Response(status_code=status.HTTP_204_NO_CONTENT)
-    if os.path.exists(IMAGE_DIR):
-        for sub in os.listdir(IMAGE_DIR):
-            candidate = os.path.join(IMAGE_DIR, sub, filename)
-            if os.path.exists(candidate) and os.path.isfile(candidate):
-                os.remove(candidate)
-                return Response(status_code=status.HTTP_204_NO_CONTENT)
+def delete_image(filename: str, user: str = Depends(authenticate)):
+    file_path = os.path.join(IMAGE_DIR, user, os.path.basename(filename))
+    if os.path.isfile(file_path):
+        os.remove(file_path)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 if __name__ == "__main__":

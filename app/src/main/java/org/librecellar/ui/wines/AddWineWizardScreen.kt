@@ -28,7 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
@@ -77,12 +77,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.librecellar.data.model.LocaleFormat
 import org.librecellar.data.model.CellarLocation
 import org.librecellar.data.model.Supplier
 import org.librecellar.data.model.Wine
 import org.librecellar.data.model.WinePriceTier
 import org.librecellar.data.model.WineType
 import org.librecellar.ui.cellar.AddLocationDialog
+import org.librecellar.ui.components.CurrencyPicker
 import org.librecellar.ui.components.BarcodeScannerDialog
 import org.librecellar.ui.components.CountryDropdownSelect
 import org.librecellar.ui.components.GrapeTagInput
@@ -102,10 +104,11 @@ fun PriceRangeSuggestionSelector(
     existingWines: List<Wine>,
     selectedTier: WinePriceTier?,
     onTierSelected: (WinePriceTier?) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    currency: String? = null
 ) {
-    val dynamicSuggested = remember(purchasePrice, existingWines) {
-        WinePriceTier.calculateDynamicTier(purchasePrice, existingWines)
+    val dynamicSuggested = remember(purchasePrice, existingWines, currency) {
+        WinePriceTier.calculateDynamicTier(purchasePrice, existingWines, currency)
     }
     val currentActive = selectedTier ?: dynamicSuggested
 
@@ -123,7 +126,7 @@ fun PriceRangeSuggestionSelector(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = Icons.Default.AttachMoney,
+                    imageVector = Icons.Default.Payments,
                     contentDescription = null,
                     tint = CellarGold,
                     modifier = Modifier.size(16.dp)
@@ -151,7 +154,7 @@ fun PriceRangeSuggestionSelector(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Suggested: ${dynamicSuggested.shortLabel} (${dynamicSuggested.symbol})",
+                        text = "Suggested: ${dynamicSuggested.shortLabel} (${dynamicSuggested.symbolFor(currency)})",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = suggestedColor
@@ -213,7 +216,7 @@ fun PriceRangeSuggestionSelector(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = tier.symbol,
+                            text = tier.symbolFor(currency),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.ExtraBold,
                             color = if (isSelected) Color.White else tierColor
@@ -279,6 +282,8 @@ fun AddWineWizardScreen(
     var tastingRating by remember { mutableStateOf<Int?>(null) }
     var comments by remember { mutableStateOf("") }
     var purchasePriceText by remember { mutableStateOf("") }
+    // New wines are priced in the device's currency unless the user picks another one
+    var currency by remember { mutableStateOf(LocaleFormat.currency.currencyCode) }
     var selectedPriceTier by remember { mutableStateOf<WinePriceTier?>(null) }
     var purchaseLocation by remember { mutableStateOf("") }
     var photoUrl by remember { mutableStateOf<String?>(null) }
@@ -310,10 +315,10 @@ fun AddWineWizardScreen(
     fun commitWine() {
         val vintage = vintageText.toIntOrNull() ?: Calendar.getInstance().get(Calendar.YEAR)
         val quantity = quantityText.toIntOrNull()?.coerceAtLeast(1) ?: 1
-        val alc = alcoholText.toDoubleOrNull()
-        val price = purchasePriceText.toDoubleOrNull()
+        val alc = LocaleFormat.parseDecimal(alcoholText)
+        val price = LocaleFormat.parseDecimal(purchasePriceText)
 
-        val dynamicTier = WinePriceTier.calculateDynamicTier(price, existingWines)
+        val dynamicTier = WinePriceTier.calculateDynamicTier(price, existingWines, currency)
         val finalTier = (selectedPriceTier ?: dynamicTier).key
 
         val slotLabel = if (selectedLocationId != null && selectedRow != null && selectedCol != null) {
@@ -333,6 +338,7 @@ fun AddWineWizardScreen(
             tastingRating = tastingRating,
             comments = comments.ifBlank { null },
             purchasePrice = price,
+            currency = currency,
             purchaseLocation = purchaseLocation.ifBlank { null },
             photoUrl = photoUrl,
             barcode = barcode.ifBlank { null },
@@ -621,6 +627,8 @@ fun AddWineWizardScreen(
                                         onAlcoholChange = { alcoholText = it },
                                         purchasePriceText = purchasePriceText,
                                         onPriceChange = { purchasePriceText = it },
+                                        currency = currency,
+                                        onCurrencyChange = { currency = it },
                                         existingWines = existingWines,
                                         isPriceTierEnabled = isPriceTierEnabled,
                                         selectedPriceTier = selectedPriceTier,
@@ -695,6 +703,8 @@ fun AddWineWizardScreen(
                         onCommentsChange = { comments = it },
                         purchasePriceText = purchasePriceText,
                         onPriceChange = { purchasePriceText = it },
+                        currency = currency,
+                        onCurrencyChange = { currency = it },
                         existingWines = existingWines,
                         isPriceTierEnabled = isPriceTierEnabled,
                         selectedPriceTier = selectedPriceTier,
@@ -1056,6 +1066,8 @@ fun WizardStepDetails(
     onAlcoholChange: (String) -> Unit,
     purchasePriceText: String,
     onPriceChange: (String) -> Unit,
+    currency: String = LocaleFormat.currency.currencyCode,
+    onCurrencyChange: (String) -> Unit = {},
     existingWines: List<Wine> = emptyList(),
     isPriceTierEnabled: Boolean = true,
     selectedPriceTier: WinePriceTier? = null,
@@ -1235,7 +1247,7 @@ fun WizardStepDetails(
                     value = alcoholText,
                     onValueChange = onAlcoholChange,
                     label = { Text("Alcohol %") },
-                    placeholder = { Text("e.g. 13.5") },
+                    placeholder = { Text("e.g. ${LocaleFormat.formatDecimal(13.5)}") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier.weight(1f)
@@ -1248,8 +1260,9 @@ fun WizardStepDetails(
             OutlinedTextField(
                 value = purchasePriceText,
                 onValueChange = onPriceChange,
-                label = { Text("Purchase Price ($/€)") },
-                placeholder = { Text("e.g. 75.00") },
+                label = { Text("Purchase Price ($currency)") },
+                placeholder = { Text("e.g. ${LocaleFormat.example(75.0)}") },
+                leadingIcon = { CurrencyPicker(currencyCode = currency, onCurrencyChange = onCurrencyChange) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
@@ -1258,10 +1271,11 @@ fun WizardStepDetails(
             if (isPriceTierEnabled) {
                 Spacer(modifier = Modifier.height(8.dp))
                 PriceRangeSuggestionSelector(
-                    purchasePrice = purchasePriceText.toDoubleOrNull(),
+                    purchasePrice = LocaleFormat.parseDecimal(purchasePriceText),
                     existingWines = existingWines,
                     selectedTier = selectedPriceTier,
-                    onTierSelected = onPriceTierChange
+                    onTierSelected = onPriceTierChange,
+                    currency = currency
                 )
             }
 
@@ -1501,7 +1515,7 @@ fun WizardStepLocation(
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
-                            val tempStr = if (loc.temperatureCelsius != null) " • ${loc.temperatureCelsius}°C" else ""
+                            val tempStr = if (loc.temperatureCelsius != null) " • ${LocaleFormat.formatDecimal(loc.temperatureCelsius)}°C" else ""
                             Text(
                                 text = "${loc.rows} rows × ${loc.columns} slots$tempStr",
                                 style = MaterialTheme.typography.labelSmall,
@@ -1625,6 +1639,8 @@ fun ManualWineEntryForm(
     onCommentsChange: (String) -> Unit,
     purchasePriceText: String,
     onPriceChange: (String) -> Unit,
+    currency: String = LocaleFormat.currency.currencyCode,
+    onCurrencyChange: (String) -> Unit = {},
     existingWines: List<Wine> = emptyList(),
     isPriceTierEnabled: Boolean = true,
     selectedPriceTier: WinePriceTier? = null,
@@ -1787,7 +1803,7 @@ fun ManualWineEntryForm(
                 value = alcoholText,
                 onValueChange = onAlcoholChange,
                 label = { Text("Alcohol %") },
-                placeholder = { Text("e.g. 13.5") },
+                placeholder = { Text("e.g. ${LocaleFormat.formatDecimal(13.5)}") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.weight(1f)
             )
@@ -1799,8 +1815,9 @@ fun ManualWineEntryForm(
         OutlinedTextField(
             value = purchasePriceText,
             onValueChange = onPriceChange,
-            label = { Text("Purchase Price ($/€)") },
-            placeholder = { Text("e.g. 75.00") },
+            label = { Text("Purchase Price ($currency)") },
+            placeholder = { Text("e.g. ${LocaleFormat.example(75.0)}") },
+            leadingIcon = { CurrencyPicker(currencyCode = currency, onCurrencyChange = onCurrencyChange) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
@@ -1808,10 +1825,11 @@ fun ManualWineEntryForm(
 
         if (isPriceTierEnabled) {
             PriceRangeSuggestionSelector(
-                purchasePrice = purchasePriceText.toDoubleOrNull(),
+                purchasePrice = LocaleFormat.parseDecimal(purchasePriceText),
                 existingWines = existingWines,
                 selectedTier = selectedPriceTier,
-                onTierSelected = onPriceTierChange
+                onTierSelected = onPriceTierChange,
+                currency = currency
             )
         }
 

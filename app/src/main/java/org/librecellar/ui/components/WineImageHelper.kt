@@ -43,6 +43,7 @@ import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundyLight
 import org.librecellar.ui.theme.WineRose
 import java.io.File
+import java.io.IOException
 import java.security.SecureRandom
 import java.util.UUID
 
@@ -51,22 +52,6 @@ val LocalWineRepository = compositionLocalOf<WineRepository?> { null }
 object WineImageHelper {
 
     private const val TAG = "WineImageHelper"
-    private const val PREFS_NAME = "librecellar_prefs"
-    private const val KEY_USER_UUID = "user_uuid_v4"
-
-    /**
-     * Retrieves or generates a persistent UUIDv4 identifying this user.
-     */
-    fun getUserUuid(context: Context): String {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val existing = prefs.getString(KEY_USER_UUID, null)
-        if (!existing.isNullOrBlank()) {
-            return existing
-        }
-        val newUuid = UUID.randomUUID().toString()
-        prefs.edit().putString(KEY_USER_UUID, newUuid).apply()
-        return newUuid
-    }
 
     /**
      * Generates an RFC 9562-compliant time-ordered UUIDv7 string.
@@ -236,49 +221,29 @@ object WineImageHelper {
 
     /**
      * Uploads a bottle picture to the backend API.
-     * The backend stores it in configurable path under the user's UUIDv4 subfolder
-     * and renames it to UUIDv7.<ext>.
-     * Returns the filename (UUIDv7.<ext>).
+     * The backend stores it in the authenticated user's collection and renames it to UUIDv7.<ext>.
+     * Returns the server filename (UUIDv7.<ext>); throws if the backend did not store the picture
+     * (pictures are managed by the backend, there is no local-only fallback).
      */
     suspend fun uploadImageToBackend(
         context: Context,
         apiService: WineApiService,
-        userUuid: String,
         sourceFile: File
     ): String = withContext(Dispatchers.IO) {
-        try {
-            val mediaType = "image/jpeg".toMediaTypeOrNull()
-            val requestBody = sourceFile.asRequestBody(mediaType)
-            val part = MultipartBody.Part.createFormData("file", sourceFile.name, requestBody)
+        val mediaType = "image/jpeg".toMediaTypeOrNull()
+        val requestBody = sourceFile.asRequestBody(mediaType)
+        val part = MultipartBody.Part.createFormData("file", sourceFile.name, requestBody)
 
-            val resp = apiService.uploadImage(part, userUuid)
-            if (resp.isSuccessful && resp.body() != null) {
-                val serverFilename = resp.body()!!.filename
-                // Copy or link into local cache under the server's UUIDv7 filename
-                val cachedFile = File(getBottleCacheDir(context), serverFilename)
-                if (!cachedFile.exists() || cachedFile.absolutePath != sourceFile.absolutePath) {
-                    sourceFile.copyTo(cachedFile, overwrite = true)
-                }
-                Log.d(TAG, "Uploaded image successfully, server filename: $serverFilename")
-                return@withContext serverFilename
-            } else {
-                Log.w(TAG, "Backend image upload returned error ${resp.code()}, keeping local cache")
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to upload image to backend, storing in local cache", e)
-        }
-
-        // Fallback: If offline or failed, generate UUIDv7 filename locally
-        val localUuid7Filename = if (sourceFile.name.startsWith("01")) {
-            sourceFile.name
-        } else {
-            "${generateUuidV7()}.jpg"
-        }
-        val cachedFile = File(getBottleCacheDir(context), localUuid7Filename)
+        val resp = apiService.uploadImage(part)
+        val serverFilename = resp.body()?.takeIf { resp.isSuccessful }?.filename
+            ?: throw IOException("Picture upload failed (HTTP ${resp.code()})")
+        // Keep a local copy under the server's filename so it need not be downloaded again
+        val cachedFile = File(getBottleCacheDir(context), serverFilename)
         if (cachedFile.absolutePath != sourceFile.absolutePath) {
             sourceFile.copyTo(cachedFile, overwrite = true)
         }
-        localUuid7Filename
+        Log.d(TAG, "Uploaded image successfully, server filename: $serverFilename")
+        serverFilename
     }
 
     /**
@@ -288,11 +253,10 @@ object WineImageHelper {
     suspend fun fetchAndCacheRemoteImage(
         context: Context,
         filename: String,
-        apiService: WineApiService,
-        userUuid: String
+        apiService: WineApiService
     ): File? = withContext(Dispatchers.IO) {
         try {
-            val resp = apiService.downloadImage(filename, userUuid)
+            val resp = apiService.downloadImage(filename)
             if (resp.isSuccessful && resp.body() != null) {
                 val destFile = File(getBottleCacheDir(context), filename)
                 resp.body()!!.byteStream().use { input ->

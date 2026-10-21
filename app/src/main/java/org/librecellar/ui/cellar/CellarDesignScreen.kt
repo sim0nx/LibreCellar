@@ -90,8 +90,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.librecellar.data.model.LocaleFormat
 import org.librecellar.data.model.CellarLocation
 import org.librecellar.data.model.Wine
+import org.librecellar.ui.components.SharedEntryBadge
 import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.CellarOakWood
 import org.librecellar.ui.theme.CellarStoneSurfaceElevated
@@ -133,7 +135,11 @@ fun CellarDesignScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val unassignedWines = wines.filter { it.locationId == null && it.quantity > 0 }
+    // A rack of a collection shared read-only can be viewed but not rearranged
+    val isCurrentReadOnly = currentLocation?.isReadOnly == true
+    val unassignedWines = wines.filter {
+        it.locationId == null && it.quantity > 0 && (currentLocation?.acceptsWine(it) ?: !it.isReadOnly)
+    }
     val winesInCurrentLocation = wines.filter { it.locationId == currentLocation?.id }
 
     val configuration = LocalConfiguration.current
@@ -146,7 +152,9 @@ fun CellarDesignScreen(
     }
 
     val onSlotClickAction: (Int, Int, Wine?) -> Unit = { rowIndex, colIndex, wineInSlot ->
-        if (selectedWineToMove != null) {
+        if (isCurrentReadOnly) {
+            if (wineInSlot != null) showSlotInfoDialog = wineInSlot
+        } else if (selectedWineToMove != null) {
             val wineId = selectedWineToMove!!.id
             onAssignSlot(wineId, currentLocation?.id, rowIndex, colIndex)
             scope.launch {
@@ -162,7 +170,8 @@ fun CellarDesignScreen(
         }
     }
 
-    val onSlotLongClickAction: (Wine) -> Unit = { wineInSlot ->
+    val onSlotLongClickAction: (Wine) -> Unit = longClick@{ wineInSlot ->
+        if (isCurrentReadOnly || wineInSlot.isReadOnly) return@longClick
         selectedWineToMove = wineInSlot
         scope.launch {
             snackbarHostState.showSnackbar("Moving ${wineInSlot.name}. Tap target slot to place.")
@@ -380,7 +389,9 @@ fun CellarDesignScreen(
                                             fontWeight = FontWeight.SemiBold,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
-                                        Row {
+                                        if (isCurrentReadOnly) {
+                                            SharedEntryBadge(entry = currentLocation)
+                                        } else Row {
                                             IconButton(
                                                 onClick = { locationToEdit = currentLocation },
                                                 modifier = Modifier.size(24.dp).testTag("edit_current_location_button")
@@ -411,14 +422,14 @@ fun CellarDesignScreen(
                                     ) {
                                         currentLocation.temperatureCelsius?.let { temp ->
                                             Text(
-                                                text = "$temp°C",
+                                                text = "${LocaleFormat.formatDecimal(temp)}°C",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = CellarGold
                                             )
                                         }
                                         currentLocation.humidityPercent?.let { hum ->
                                             Text(
-                                                text = "$hum% RH",
+                                                text = "${LocaleFormat.formatDecimal(hum)}% RH",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = Color(0xFF64B5F6)
                                             )
@@ -603,7 +614,9 @@ fun CellarDesignScreen(
                             )
                         }
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (isCurrentReadOnly) {
+                            SharedEntryBadge(entry = currentLocation)
+                        } else Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(
                                 onClick = { locationToEdit = currentLocation },
                                 modifier = Modifier.testTag("edit_current_location_button")
@@ -640,10 +653,17 @@ fun CellarDesignScreen(
                                 selected = isSelected,
                                 onClick = { selectedLocationId = loc.id },
                                 label = {
-                                    Text(
-                                        text = loc.name,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = loc.name,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                        SharedEntryBadge(
+                                            entry = loc,
+                                            showOwner = false,
+                                            modifier = Modifier.padding(start = 4.dp)
+                                        )
+                                    }
                                 },
                                 leadingIcon = {
                                     Box(
@@ -723,7 +743,7 @@ fun CellarDesignScreen(
                                         )
                                         Spacer(modifier = Modifier.width(2.dp))
                                         Text(
-                                            text = "$temp°C",
+                                            text = "${LocaleFormat.formatDecimal(temp)}°C",
                                             style = MaterialTheme.typography.labelMedium,
                                             fontWeight = FontWeight.SemiBold
                                         )
@@ -740,7 +760,7 @@ fun CellarDesignScreen(
                                         )
                                         Spacer(modifier = Modifier.width(2.dp))
                                         Text(
-                                            text = "$hum%",
+                                            text = "${LocaleFormat.formatDecimal(hum)}%",
                                             style = MaterialTheme.typography.labelMedium,
                                             fontWeight = FontWeight.SemiBold
                                         )
@@ -898,10 +918,11 @@ fun CellarDesignScreen(
                     Text(text = "Position: ${wine.slotLabel ?: "Cellar slot"}")
                     Text(text = "Rating: ${wine.tastingRating?.let { "$it ★" } ?: "Not rated"}")
                     Text(text = "In Stock: ${wine.quantity} bottles")
+                    SharedEntryBadge(entry = wine, modifier = Modifier.padding(top = 6.dp))
                 }
             },
             confirmButton = {
-                Button(
+                if (!wine.isReadOnly && !isCurrentReadOnly) Button(
                     onClick = {
                         selectedWineToMove = wine
                         showSlotInfoDialog = null
@@ -916,7 +937,7 @@ fun CellarDesignScreen(
             },
             dismissButton = {
                 Row {
-                    TextButton(
+                    if (!wine.isReadOnly && !isCurrentReadOnly) TextButton(
                         onClick = {
                             // Unassign from slot
                             onAssignSlot(wine.id, null, null, null)
@@ -938,7 +959,7 @@ fun CellarDesignScreen(
 
     // 3. Pick Wine for Empty Slot Dialog
     showSlotWinePicker?.let { (row, col) ->
-        val candidateWines = wines.filter { it.quantity > 0 }
+        val candidateWines = wines.filter { it.quantity > 0 && currentLocation?.acceptsWine(it) != false }
         AlertDialog(
             onDismissRequest = { showSlotWinePicker = null },
             title = {
@@ -1364,10 +1385,10 @@ fun RackFormDialog(
     var columns by remember(initialLocation) { mutableIntStateOf(initialLocation?.columns ?: 6) }
     var description by remember(initialLocation) { mutableStateOf(initialLocation?.description ?: "") }
     var tempText by remember(initialLocation) {
-        mutableStateOf(initialLocation?.temperatureCelsius?.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() } ?: "")
+        mutableStateOf(LocaleFormat.formatDecimalInput(initialLocation?.temperatureCelsius))
     }
     var humText by remember(initialLocation) {
-        mutableStateOf(initialLocation?.humidityPercent?.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() } ?: "")
+        mutableStateOf(LocaleFormat.formatDecimalInput(initialLocation?.humidityPercent))
     }
     var selectedColor by remember(initialLocation) { mutableStateOf(initialLocation?.colorHex ?: "#6B1D2F") }
 
@@ -1518,8 +1539,8 @@ fun RackFormDialog(
             Button(
                 onClick = {
                     if (name.isNotBlank()) {
-                        val cleanTemp = tempText.trim().toDoubleOrNull()
-                        val cleanHum = humText.trim().toDoubleOrNull()
+                        val cleanTemp = LocaleFormat.parseDecimal(tempText)
+                        val cleanHum = LocaleFormat.parseDecimal(humText)
                         val result = CellarLocation(
                             id = initialLocation?.id ?: java.util.UUID.randomUUID().toString(),
                             name = name.trim(),

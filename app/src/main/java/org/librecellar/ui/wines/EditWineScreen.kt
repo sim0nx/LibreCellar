@@ -27,7 +27,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -41,7 +41,9 @@ import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.WineBar
+import org.librecellar.data.model.LocaleFormat
 import org.librecellar.ui.components.BarcodeScannerDialog
+import org.librecellar.ui.components.CurrencyPicker
 import org.librecellar.ui.components.PhotoCaptureDialog
 import org.librecellar.ui.components.WineBottleImage
 import androidx.compose.material3.Button
@@ -139,7 +141,9 @@ fun EditWineScreen(
     var slotColumn by remember(wine) { mutableIntStateOf(wine.slotColumn ?: 0) }
 
     // Valuation & Merchant
-    var priceText by remember(wine) { mutableStateOf(wine.purchasePrice?.toString() ?: "") }
+    var priceText by remember(wine) { mutableStateOf(LocaleFormat.formatDecimalInput(wine.purchasePrice)) }
+    // Wines saved before currencies existed get the device's currency once edited
+    var currency by remember(wine) { mutableStateOf(wine.effectiveCurrency) }
     var selectedTier by remember(wine) { mutableStateOf(WinePriceTier.fromKey(wine.priceTier)) }
     var purchaseLocation by remember(wine) { mutableStateOf(wine.purchaseLocation ?: "") }
     var purchaseDate by remember(wine) { mutableStateOf(wine.purchaseDate ?: "") }
@@ -147,7 +151,7 @@ fun EditWineScreen(
 
     // Specs & Tasting
     var bottleSize by remember(wine) { mutableStateOf(wine.size ?: "0.75L") }
-    var alcoholText by remember(wine) { mutableStateOf(wine.alcoholPercent?.toString() ?: "") }
+    var alcoholText by remember(wine) { mutableStateOf(LocaleFormat.formatDecimalInput(wine.alcoholPercent)) }
     var tastingRating by remember(wine) { mutableIntStateOf(wine.tastingRating ?: 0) }
     var comments by remember(wine) { mutableStateOf(wine.comments ?: "") }
     var barcode by remember(wine) { mutableStateOf(wine.barcode ?: "") }
@@ -204,8 +208,8 @@ fun EditWineScreen(
                     Button(
                         onClick = {
                             if (isFormValid) {
-                                val cleanPrice = priceText.toDoubleOrNull()
-                                val cleanAlcohol = alcoholText.toDoubleOrNull()
+                                val cleanPrice = LocaleFormat.parseDecimal(priceText)
+                                val cleanAlcohol = LocaleFormat.parseDecimal(alcoholText)
                                 val label = if (selectedLocation != null) {
                                     "Row ${slotRow + 1}, Slot ${slotColumn + 1}"
                                 } else null
@@ -224,6 +228,7 @@ fun EditWineScreen(
                                     slotColumn = if (selectedLocationId != null) slotColumn else null,
                                     slotLabel = label,
                                     purchasePrice = cleanPrice,
+                                    currency = currency,
                                     priceTier = selectedTier?.key,
                                     purchaseLocation = purchaseLocation.trim().ifBlank { null },
                                     purchaseDate = purchaseDate.trim().ifBlank { null },
@@ -588,7 +593,7 @@ fun EditWineScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.AttachMoney, contentDescription = null, tint = CellarGold)
+                        Icon(imageVector = Icons.Default.Payments, contentDescription = null, tint = CellarGold)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Purchase & Price Tier Markings",
@@ -604,10 +609,10 @@ fun EditWineScreen(
                         OutlinedTextField(
                             value = priceText,
                             onValueChange = { priceText = it },
-                            label = { Text("Purchase Price ($)") },
-                            placeholder = { Text("e.g. 45.00") },
+                            label = { Text("Purchase Price ($currency)") },
+                            placeholder = { Text("e.g. ${LocaleFormat.example(45.0)}") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            leadingIcon = { Text("$", fontWeight = FontWeight.Bold, color = CellarGold) },
+                            leadingIcon = { CurrencyPicker(currencyCode = currency, onCurrencyChange = { currency = it }) },
                             singleLine = true,
                             modifier = Modifier
                                 .weight(1f)
@@ -630,11 +635,12 @@ fun EditWineScreen(
                     // Price Range Suggestion & Manual Override Selector
                     if (isPriceTierEnabled) {
                         PriceRangeSuggestionSelector(
-                            purchasePrice = priceText.toDoubleOrNull(),
+                            purchasePrice = LocaleFormat.parseDecimal(priceText),
                             existingWines = allWines,
                             selectedTier = selectedTier,
                             onTierSelected = { selectedTier = it },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            currency = currency
                         )
                     }
 
@@ -715,7 +721,7 @@ fun EditWineScreen(
                             value = alcoholText,
                             onValueChange = { alcoholText = it },
                             label = { Text("Alcohol %") },
-                            placeholder = { Text("e.g. 13.5") },
+                            placeholder = { Text("e.g. ${LocaleFormat.formatDecimal(13.5)}") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             leadingIcon = { Icon(imageVector = Icons.Default.Percent, contentDescription = null, modifier = Modifier.size(16.dp)) },
                             singleLine = true,
@@ -850,8 +856,8 @@ fun EditWineScreen(
                 Button(
                     onClick = {
                         if (isFormValid) {
-                            val cleanPrice = priceText.toDoubleOrNull()
-                            val cleanAlcohol = alcoholText.toDoubleOrNull()
+                            val cleanPrice = LocaleFormat.parseDecimal(priceText)
+                            val cleanAlcohol = LocaleFormat.parseDecimal(alcoholText)
                             val label = if (selectedLocation != null) {
                                 "Row ${slotRow + 1}, Slot ${slotColumn + 1}"
                             } else null
@@ -870,6 +876,7 @@ fun EditWineScreen(
                                 slotColumn = if (selectedLocationId != null) slotColumn else null,
                                 slotLabel = label,
                                 purchasePrice = cleanPrice,
+                                currency = currency,
                                 priceTier = selectedTier?.key,
                                 purchaseLocation = purchaseLocation.trim().ifBlank { null },
                                 purchaseDate = purchaseDate.trim().ifBlank { null },

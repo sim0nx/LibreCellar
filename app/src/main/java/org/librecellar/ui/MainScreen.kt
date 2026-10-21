@@ -6,6 +6,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -108,6 +112,8 @@ fun MainScreen(repository: WineRepository) {
     val isOnline by repository.isBackendOnline.collectAsState()
     val backendUrl by repository.backendUrl.collectAsState()
     val isPriceTierEnabled by repository.isPriceTierMarkingEnabled.collectAsState()
+    val hideReadOnlyShared by repository.hideReadOnlyShared.collectAsState()
+    val hideWritableShared by repository.hideWritableShared.collectAsState()
 
     val isWinesRefreshing by repository.isWinesRefreshing.collectAsState()
     val hasMoreWines by repository.hasMoreWines.collectAsState()
@@ -125,13 +131,21 @@ fun MainScreen(repository: WineRepository) {
 
     val scope = rememberCoroutineScope()
 
+    // Operations the server rejected or could not receive (the server manages all data)
+    val operationSnackbar = remember { SnackbarHostState() }
+    LaunchedEffect(repository) {
+        repository.operationErrors.collect { message -> operationSnackbar.showSnackbar(message) }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
     when (val screen = currentScreen) {
         is ScreenState.AddWine -> {
             BackHandler {
                 currentScreen = ScreenState.Main
             }
             AddWineWizardScreen(
-                cellarLocations = locations,
+                // New wines join the collection of the rack they are placed in
+                cellarLocations = locations.filter { !it.isReadOnly },
                 suppliers = suppliers,
                 existingWines = wines,
                 knownGrapes = knownGrapes,
@@ -139,8 +153,8 @@ fun MainScreen(repository: WineRepository) {
                 isPriceTierEnabled = isPriceTierEnabled,
                 onWineCreated = { newWine ->
                     scope.launch {
-                        repository.addWine(newWine)
-                        currentScreen = ScreenState.Main
+                        // Stay in the wizard if the server rejected the wine
+                        if (repository.addWine(newWine)) currentScreen = ScreenState.Main
                     }
                 },
                 onAddLocation = { newLoc ->
@@ -158,10 +172,10 @@ fun MainScreen(repository: WineRepository) {
                 currentScreen = ScreenState.WineDetail(screen.wineId)
             }
             val wine = wines.find { it.id == screen.wineId }
-            if (wine != null) {
+            if (wine != null && !wine.isReadOnly) {
                 EditWineScreen(
                     wine = wine,
-                    locations = locations,
+                    locations = locations.filter { it.acceptsWine(wine) || it.id == wine.locationId },
                     suppliers = suppliers,
                     allWines = wines,
                     knownGrapes = knownGrapes,
@@ -169,8 +183,9 @@ fun MainScreen(repository: WineRepository) {
                     isPriceTierEnabled = isPriceTierEnabled,
                     onSaveWine = { updatedWine ->
                         scope.launch {
-                            repository.updateWine(updatedWine)
-                            currentScreen = ScreenState.WineDetail(updatedWine.id)
+                            if (repository.updateWine(updatedWine)) {
+                                currentScreen = ScreenState.WineDetail(updatedWine.id)
+                            }
                         }
                     },
                     onCancel = {
@@ -201,14 +216,11 @@ fun MainScreen(repository: WineRepository) {
                         scope.launch { repository.decrementQuantity(wine.id) }
                     },
                     onIncrement = {
-                        scope.launch {
-                            repository.updateWine(wine.copy(quantity = wine.quantity + 1))
-                        }
+                        scope.launch { repository.incrementQuantity(wine.id) }
                     },
                     onDelete = {
                         scope.launch {
-                            repository.deleteWine(wine.id)
-                            currentScreen = ScreenState.Main
+                            if (repository.deleteWine(wine.id)) currentScreen = ScreenState.Main
                         }
                     }
                 )
@@ -430,7 +442,15 @@ fun MainScreen(repository: WineRepository) {
                                 onRefresh = { scope.launch { repository.refreshWines() } },
                                 hasMoreWines = hasMoreWines,
                                 isLoadingMore = isLoadingMoreWines,
-                                onLoadMore = { scope.launch { repository.loadNextWinePage() } }
+                                onLoadMore = { scope.launch { repository.loadNextWinePage() } },
+                                hideReadOnlyShared = hideReadOnlyShared,
+                                hideWritableShared = hideWritableShared,
+                                onHideReadOnlySharedChange = { hide ->
+                                    scope.launch { repository.updateHideReadOnlyShared(hide) }
+                                },
+                                onHideWritableSharedChange = { hide ->
+                                    scope.launch { repository.updateHideWritableShared(hide) }
+                                }
                             )
                         }
 
@@ -499,5 +519,14 @@ fun MainScreen(repository: WineRepository) {
                 }
             }
         }
+    }
+
+    SnackbarHost(
+        hostState = operationSnackbar,
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .navigationBarsPadding()
+            .padding(bottom = 72.dp)
+    )
     }
 }
