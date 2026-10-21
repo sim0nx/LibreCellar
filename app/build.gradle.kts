@@ -6,6 +6,20 @@ plugins {
   alias(libs.plugins.kotlin.serialization)
 }
 
+// App version (versionCode / versionName), see version.properties
+val versionProperties =
+    Properties().apply {
+      val file = rootProject.file("version.properties")
+      require(file.isFile) { "version.properties is missing in the project root" }
+      file.inputStream().use { load(it) }
+    }
+val appVersionCode: Int =
+    versionProperties.getProperty("versionCode")?.trim()?.toIntOrNull()?.takeIf { it > 0 }
+        ?: error("version.properties: versionCode must be a positive whole number")
+val appVersionName: String =
+    versionProperties.getProperty("versionName")?.trim()?.takeIf { it.isNotEmpty() }
+        ?: error("version.properties: versionName is missing")
+
 // Release signing settings, kept out of version control
 val keystoreProperties =
     Properties().apply {
@@ -31,8 +45,8 @@ android {
     applicationId = "org.librecellar"
     minSdk = 24
     targetSdk = 36
-    versionCode = 2
-    versionName = "1.1"
+    versionCode = appVersionCode
+    versionName = appVersionName
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
