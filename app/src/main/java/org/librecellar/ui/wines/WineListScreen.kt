@@ -70,6 +70,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.toColorInt
 import org.librecellar.data.model.LocaleFormat
 import org.librecellar.data.model.CellarLocation
 import org.librecellar.data.model.CountryHelper
@@ -926,7 +927,7 @@ fun WineTileCard(
                 if (isPriceTierEnabled) {
                     val tier = wine.getResolvedPriceTier(allWines)
                     val tierColor = try {
-                        Color(android.graphics.Color.parseColor(tier.colorHex))
+                        Color(tier.colorHex.toColorInt())
                     } catch (e: Exception) {
                         CellarGold
                     }
@@ -1102,7 +1103,7 @@ fun WineTableRowCard(
                 if (isPriceTierEnabled) {
                     val tier = wine.getResolvedPriceTier(allWines)
                     val tierColor = try {
-                        Color(android.graphics.Color.parseColor(tier.colorHex))
+                        Color(tier.colorHex.toColorInt())
                     } catch (e: Exception) {
                         CellarGold
                     }

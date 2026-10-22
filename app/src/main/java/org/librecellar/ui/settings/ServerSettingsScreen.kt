@@ -1,5 +1,6 @@
 package org.librecellar.ui.settings
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -67,6 +68,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.toColorInt
 import org.librecellar.data.model.CollectionAccess
 import org.librecellar.data.model.LocaleFormat
 import org.librecellar.data.model.Wine
@@ -997,7 +999,7 @@ fun PriceRangeSettingsContent(
 
                 WinePriceTier.entries.forEach { tier ->
                     val tierColor = try {
-                        Color(android.graphics.Color.parseColor(tier.colorHex))
+                        Color(tier.colorHex.toColorInt())
                     } catch (e: Exception) {
                         CellarGold
                     }
@@ -1094,6 +1096,8 @@ private fun getThresholdDescription(tier: WinePriceTier, pricedWines: List<Doubl
     }
 }
 
+// The snippet contains an example database URL with placeholder credentials
+@SuppressLint("AuthLeak")
 private fun getFastApiPythonSnippet(): String {
     return """
 from fastapi import FastAPI, Depends, HTTPException, status, Response

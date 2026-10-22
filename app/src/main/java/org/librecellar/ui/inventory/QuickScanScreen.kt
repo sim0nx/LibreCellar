@@ -58,6 +58,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.librecellar.data.model.CellarLocation
@@ -191,7 +192,7 @@ fun QuickScanScreen(
                     modifier = Modifier
                         .fillMaxWidth(0.82f)
                         .height(2.5.dp)
-                        .offset(y = (-45 + laserOffset).dp)
+                        .offset { IntOffset(0, (-45 + laserOffset).dp.roundToPx()) }
                         .background(CellarGold)
                 )
             }

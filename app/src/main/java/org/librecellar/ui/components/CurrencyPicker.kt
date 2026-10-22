@@ -16,13 +16,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.librecellar.data.model.LocaleFormat
 import org.librecellar.ui.theme.AppIcons
 import org.librecellar.ui.theme.CellarGold
-import java.util.Locale
 
 /**
  * Currency selector shown as the leading element of a price field: the currency symbol,
@@ -35,6 +35,8 @@ fun CurrencyPicker(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
+    // Read through the configuration so names follow a change of the device language
+    val locale = LocalConfiguration.current.locales[0]
     val currencies = remember { LocaleFormat.selectableCurrencies() }
     val preferredCount = remember(currencies) {
         currencies.indexOfFirst { it.currencyCode !in setOf(LocaleFormat.currency.currencyCode, "EUR", "USD", "GBP", "CHF") }
@@ -58,8 +60,8 @@ fun CurrencyPicker(
             DropdownMenuItem(
                 text = {
                     Text(
-                        "${currency.currencyCode}  ${currency.getSymbol(Locale.getDefault())}  ·  " +
-                                currency.getDisplayName(Locale.getDefault()),
+                        "${currency.currencyCode}  ${currency.getSymbol(locale)}  ·  " +
+                                currency.getDisplayName(locale),
                         fontWeight = if (currency.currencyCode == currencyCode) FontWeight.Bold else FontWeight.Normal
                     )
                 },

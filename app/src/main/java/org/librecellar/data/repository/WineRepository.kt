@@ -3,6 +3,7 @@ package org.librecellar.data.repository
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import androidx.core.net.toUri
 import java.io.File
 import org.librecellar.data.api.WineApiService
 import org.librecellar.data.model.AssignSlotRequest
@@ -241,6 +242,7 @@ class WineRepository(private val context: Context) {
     companion object {
         // Backend page size used for all paginated lists
         private const val PAGE_SIZE = 20
+
 
         val DEFAULT_KNOWN_GRAPES = listOf(
             "Cabernet Sauvignon", "Merlot", "Pinot Noir", "Chardonnay", "Sauvignon Blanc",
@@ -745,7 +747,7 @@ class WineRepository(private val context: Context) {
             return@withContext pathOrUri
         }
         val sourceFile = if (pathOrUri.startsWith("content://")) {
-            val (cachedFile, _) = WineImageHelper.saveUriToLocalCache(context, Uri.parse(pathOrUri))
+            val (cachedFile, _) = WineImageHelper.saveUriToLocalCache(context, pathOrUri.toUri())
             cachedFile
         } else {
             val f = File(pathOrUri)

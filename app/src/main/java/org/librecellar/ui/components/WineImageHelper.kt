@@ -279,8 +279,8 @@ object WineImageHelper {
 @Composable
 fun WineBottleImage(
     photoUrl: String?,
-    wineType: String = "RED",
     modifier: Modifier = Modifier,
+    wineType: String = "RED",
     shape: Shape = RoundedCornerShape(8.dp),
     contentScale: ContentScale = ContentScale.Crop,
     iconSize: Dp = 32.dp,

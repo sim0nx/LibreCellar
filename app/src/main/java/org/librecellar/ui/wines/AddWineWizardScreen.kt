@@ -63,6 +63,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.toColorInt
 import org.librecellar.data.model.LocaleFormat
 import org.librecellar.data.model.CellarLocation
 import org.librecellar.data.model.Supplier
@@ -127,7 +128,7 @@ fun PriceRangeSuggestionSelector(
             }
 
             val suggestedColor = try {
-                Color(android.graphics.Color.parseColor(dynamicSuggested.colorHex))
+                Color(dynamicSuggested.colorHex.toColorInt())
             } catch (e: Exception) {
                 CellarGold
             }
@@ -173,7 +174,7 @@ fun PriceRangeSuggestionSelector(
                 val isSelected = currentActive == tier
                 val isSuggested = dynamicSuggested == tier
                 val tierColor = try {
-                    Color(android.graphics.Color.parseColor(tier.colorHex))
+                    Color(tier.colorHex.toColorInt())
                 } catch (e: Exception) {
                     CellarGold
                 }
@@ -1392,8 +1393,8 @@ fun WizardStepLocation(
     onFinish: () -> Unit
 ) {
     var chosenLocId by remember { mutableStateOf(selectedLocationId) }
-    var chosenRow by remember { mutableStateOf(selectedRow ?: 0) }
-    var chosenCol by remember { mutableStateOf(selectedCol ?: 0) }
+    var chosenRow by remember { mutableIntStateOf(selectedRow ?: 0) }
+    var chosenCol by remember { mutableIntStateOf(selectedCol ?: 0) }
 
     val activeLocation = cellarLocations.find { it.id == chosenLocId }
 
@@ -1654,8 +1655,8 @@ fun ManualWineEntryForm(
     onSave: () -> Unit
 ) {
     var chosenLocId by remember { mutableStateOf(selectedLocationId) }
-    var chosenRow by remember { mutableStateOf(selectedRow ?: 0) }
-    var chosenCol by remember { mutableStateOf(selectedCol ?: 0) }
+    var chosenRow by remember { mutableIntStateOf(selectedRow ?: 0) }
+    var chosenCol by remember { mutableIntStateOf(selectedCol ?: 0) }
     var supplierDropdownExpanded by remember { mutableStateOf(false) }
 
     val activeLoc = cellarLocations.find { it.id == chosenLocId }

@@ -21,8 +21,8 @@ import org.librecellar.ui.theme.CellarGold
 @Composable
 fun RatingBar(
     rating: Int?,
-    onRatingChanged: ((Int) -> Unit)? = null,
     modifier: Modifier = Modifier,
+    onRatingChanged: ((Int) -> Unit)? = null,
     maxStars: Int = 5,
     starSize: Dp = 24.dp,
     tint: Color = CellarGold

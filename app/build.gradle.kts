@@ -123,7 +123,6 @@ dependencies {
   implementation(libs.kotlinx.serialization.json)
   testImplementation(libs.junit)
   testImplementation(libs.androidx.test.core)
-  testImplementation(libs.androidx.test.ext.junit)
   testImplementation(libs.robolectric)
   androidTestImplementation(libs.androidx.test.ext.junit)
   androidTestImplementation(libs.androidx.test.runner)

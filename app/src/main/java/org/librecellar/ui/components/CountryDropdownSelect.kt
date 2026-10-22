@@ -47,11 +47,11 @@ import org.librecellar.ui.theme.WineRose
 fun CountryDropdownSelect(
     selectedCountry: String?,
     onCountrySelected: (String) -> Unit,
+    modifier: Modifier = Modifier,
     assignedCountries: Set<String> = emptySet(),
     label: String = "Country",
     placeholder: String = "Select country...",
     isOptional: Boolean = true,
-    modifier: Modifier = Modifier,
     testTag: String = "country_dropdown_select"
 ) {
     var expanded by remember { mutableStateOf(false) }

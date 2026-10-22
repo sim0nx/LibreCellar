@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.core.graphics.toColorInt
 import org.librecellar.data.model.LocaleFormat
 import org.librecellar.ui.components.BarcodeScannerDialog
 import org.librecellar.ui.components.CurrencyPicker
@@ -487,7 +488,7 @@ fun EditWineScreen(
                                             .clip(CircleShape)
                                             .background(
                                                 try {
-                                                    Color(android.graphics.Color.parseColor(loc.colorHex ?: "#6B1D2F"))
+                                                    Color((loc.colorHex ?: "#6B1D2F").toColorInt())
                                                 } catch (e: Exception) {
                                                     CellarGold
                                                 }

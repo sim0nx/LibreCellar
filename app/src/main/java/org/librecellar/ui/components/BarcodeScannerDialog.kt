@@ -2,14 +2,18 @@ package org.librecellar.ui.components
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.media.Image
 import android.net.Uri
 import android.view.ViewGroup
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.OptIn
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -68,6 +72,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -284,7 +289,7 @@ fun BarcodeScannerDialog(
                                             .build()
 
                                         imageAnalysis.setAnalyzer(cameraExecutor) { imageProxy ->
-                                            val mediaImage = imageProxy.image
+                                            val mediaImage = imageProxy.mediaImageOrNull()
                                             if (mediaImage != null && !hasScanned) {
                                                 val image = InputImage.fromMediaImage(
                                                     mediaImage,
@@ -342,7 +347,7 @@ fun BarcodeScannerDialog(
                                 modifier = Modifier
                                     .fillMaxWidth(0.92f)
                                     .height(2.5.dp)
-                                    .offset(y = (-70 + laserOffset).dp)
+                                    .offset { IntOffset(0, (-70 + laserOffset).dp.roundToPx()) }
                                     .background(CellarGold)
                             )
                         }
@@ -549,3 +554,7 @@ fun BarcodeScannerDialog(
         }
     }
 }
+
+/** The camera frame for ML Kit; CameraX marks direct access to the underlying image as opt-in. */
+@OptIn(ExperimentalGetImage::class)
+private fun ImageProxy.mediaImageOrNull(): Image? = image

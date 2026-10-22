@@ -65,6 +65,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -74,6 +75,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.toColorInt
 import org.librecellar.data.model.LocaleFormat
 import org.librecellar.data.model.CellarLocation
 import org.librecellar.data.model.Wine
@@ -128,8 +130,9 @@ fun CellarDesignScreen(
     val winesInCurrentLocation = wines.filter { it.locationId == currentLocation?.id }
 
     val configuration = LocalConfiguration.current
+    val windowSize = LocalWindowInfo.current.containerSize
     val isHorizontal = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE ||
-            configuration.screenWidthDp > configuration.screenHeightDp
+            windowSize.width > windowSize.height
 
     var isGridExpanded by remember { mutableStateOf(false) }
     var slotZoomSize by remember(isHorizontal) {
@@ -328,7 +331,7 @@ fun CellarDesignScreen(
                                                     .clip(CircleShape)
                                                     .background(
                                                         try {
-                                                            Color(android.graphics.Color.parseColor(loc.colorHex ?: "#6B1D2F"))
+                                                            Color((loc.colorHex ?: "#6B1D2F").toColorInt())
                                                         } catch (e: Exception) {
                                                             CellarGold
                                                         }
@@ -657,7 +660,7 @@ fun CellarDesignScreen(
                                             .clip(CircleShape)
                                             .background(
                                                 try {
-                                                    Color(android.graphics.Color.parseColor(loc.colorHex ?: "#6B1D2F"))
+                                                    Color((loc.colorHex ?: "#6B1D2F").toColorInt())
                                                 } catch (e: Exception) {
                                                     CellarGold
                                                 }
@@ -1050,7 +1053,7 @@ fun ExtendedCellarGrid(
                             .clip(CircleShape)
                             .background(
                                 try {
-                                    Color(android.graphics.Color.parseColor(currentLocation.colorHex ?: "#6B1D2F"))
+                                    Color((currentLocation.colorHex ?: "#6B1D2F").toColorInt())
                                 } catch (e: Exception) {
                                     CellarGold
                                 }
@@ -1508,7 +1511,7 @@ fun RackFormDialog(
                             modifier = Modifier
                                 .size(32.dp)
                                 .clip(CircleShape)
-                                .background(Color(android.graphics.Color.parseColor(hex)))
+                                .background(Color(hex.toColorInt()))
                                 .border(
                                     width = if (selectedColor == hex) 2.dp else 0.dp,
                                     color = Color.White,

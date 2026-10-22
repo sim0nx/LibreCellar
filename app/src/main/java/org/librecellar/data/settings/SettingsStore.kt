@@ -1,5 +1,6 @@
 package org.librecellar.data.settings
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.SharedPreferencesMigration
@@ -115,6 +116,8 @@ class SettingsStore(
 object LegacyPasswords {
     private val KEYS = listOf("server_password", "fastapi_password")
 
+    // commit(), not apply(): the plain-text password must be gone from disk before we go on
+    @SuppressLint("ApplySharedPref")
     fun take(context: Context): String? {
         val prefs = context.getSharedPreferences(LEGACY_PREFS, Context.MODE_PRIVATE)
         val password = KEYS.firstNotNullOfOrNull { prefs.getString(it, null)?.takeIf(String::isNotEmpty) }
