@@ -56,6 +56,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.time.LocalDate
 import org.librecellar.data.model.CountryHelper
 import org.librecellar.data.model.Supplier
 import org.librecellar.data.model.Wine
@@ -511,7 +512,7 @@ fun SupplierFormDialog(
     var country by remember { mutableStateOf(supplierToEdit?.country ?: "") }
     var website by remember { mutableStateOf(supplierToEdit?.website ?: "") }
     var notes by remember { mutableStateOf(supplierToEdit?.notes ?: "") }
-    var dateAdded by remember { mutableStateOf(supplierToEdit?.dateAdded ?: java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())) }
+    var dateAdded by remember { mutableStateOf(supplierToEdit?.dateAdded ?: LocalDate.now().toString()) }
 
     val types = listOf(
         "Wine Merchant",

@@ -2,9 +2,7 @@ package org.librecellar.data.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.time.LocalDate
 import java.util.UUID
 
 enum class WineType(val displayName: String) {
@@ -218,7 +216,7 @@ data class Supplier(
     @SerialName("country") val country: String? = null,
     @SerialName("website") val website: String? = null,
     @SerialName("notes") val notes: String? = null,
-    @SerialName("date_added") val dateAdded: String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()),
+    @SerialName("date_added") val dateAdded: String = LocalDate.now().toString(), // ISO yyyy-MM-dd
     @SerialName("owner") override val owner: String? = null,
     @SerialName("access") override val access: String? = null
 ) : SharedEntry

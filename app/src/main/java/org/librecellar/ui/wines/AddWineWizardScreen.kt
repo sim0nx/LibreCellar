@@ -83,7 +83,7 @@ import org.librecellar.ui.theme.CellarGold
 import org.librecellar.ui.theme.WineBurgundy
 import org.librecellar.ui.theme.WineBurgundyLight
 import org.librecellar.ui.theme.WineRose
-import java.util.Calendar
+import java.time.Year
 
 @Composable
 fun PriceRangeSuggestionSelector(
@@ -257,7 +257,7 @@ fun AddWineWizardScreen(
     // Wine Form State
     var name by remember { mutableStateOf("") }
     var vintageText by remember {
-        mutableStateOf(Calendar.getInstance().get(Calendar.YEAR).toString())
+        mutableStateOf(Year.now().value.toString())
     }
     var country by remember { mutableStateOf("") }
     var region by remember { mutableStateOf("") }
@@ -300,7 +300,7 @@ fun AddWineWizardScreen(
     var showNewSupplierDialog by remember { mutableStateOf(false) }
 
     fun commitWine() {
-        val vintage = vintageText.toIntOrNull() ?: Calendar.getInstance().get(Calendar.YEAR)
+        val vintage = vintageText.toIntOrNull() ?: Year.now().value
         val quantity = quantityText.toIntOrNull()?.coerceAtLeast(1) ?: 1
         val alc = LocaleFormat.parseDecimal(alcoholText)
         val price = LocaleFormat.parseDecimal(purchasePriceText)

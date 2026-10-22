@@ -43,7 +43,7 @@ android {
 
   defaultConfig {
     applicationId = "org.librecellar"
-    minSdk = 24
+    minSdk = 26
     targetSdk = 36
     versionCode = appVersionCode
     versionName = appVersionName
