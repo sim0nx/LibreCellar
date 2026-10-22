@@ -5,6 +5,8 @@ import android.net.Uri
 import android.util.Log
 import androidx.core.net.toUri
 import java.io.File
+import java.io.IOException
+import kotlin.coroutines.cancellation.CancellationException
 import org.librecellar.data.LocalNetwork
 import org.librecellar.data.api.WineApiService
 import org.librecellar.data.model.AssignSlotRequest
@@ -817,10 +819,18 @@ class WineRepository(private val context: Context) {
                 _operationErrors.tryEmit("$action failed: ${describeError(resp)}")
             }
             resp.isSuccessful
-        } catch (e: Exception) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
             Log.w("WineRepository", "$action failed", e)
             _isBackendOnline.value = false
             _operationErrors.tryEmit("$action failed: server not reachable")
+            false
+        } catch (e: Exception) {
+            // A problem in the app (e.g. a response it cannot read), not a connection problem:
+            // the server stays online and the actual error is shown
+            Log.e("WineRepository", "$action failed", e)
+            _operationErrors.tryEmit("$action failed: ${e.message ?: e.javaClass.simpleName}")
             false
         }
         if (ok) reloadFromBackend(reload)
