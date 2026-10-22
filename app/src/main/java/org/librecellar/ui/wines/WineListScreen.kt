@@ -35,6 +35,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -76,6 +78,8 @@ import org.librecellar.data.model.CellarLocation
 import org.librecellar.data.model.CountryHelper
 import org.librecellar.data.model.Wine
 import org.librecellar.data.model.WinePriceTier
+import org.librecellar.data.model.WineStatistics
+import org.librecellar.ui.statistics.InsightsStrip
 import org.librecellar.ui.components.BarcodeScannerDialog
 import org.librecellar.ui.components.GrapeBadge
 import org.librecellar.ui.components.GrapeBadgesRow
@@ -89,6 +93,15 @@ import org.librecellar.ui.theme.WineBurgundyDark
 import org.librecellar.ui.theme.WineBurgundyLight
 import org.librecellar.ui.theme.WineRose
 import kotlinx.coroutines.launch
+
+/** Filters opened from the statistics screen; [includeEmpty] also shows wines without bottles left. */
+data class WineListFilter(
+    val country: String? = null,
+    val vintage: Int? = null,
+    val includeEmpty: Boolean = false
+) {
+    val isActive: Boolean get() = country != null || vintage != null
+}
 
 enum class ViewDisplayMode {
     TILE,
@@ -120,7 +133,10 @@ fun WineListScreen(
     hideReadOnlyShared: Boolean = false,
     hideWritableShared: Boolean = false,
     onHideReadOnlySharedChange: (Boolean) -> Unit = {},
-    onHideWritableSharedChange: (Boolean) -> Unit = {}
+    onHideWritableSharedChange: (Boolean) -> Unit = {},
+    filter: WineListFilter = WineListFilter(),
+    onFilterChange: (WineListFilter) -> Unit = {},
+    onOpenStatistics: () -> Unit = {}
 ) {
     var viewMode by remember { mutableStateOf(ViewDisplayMode.TILE) }
     val gridState = rememberLazyGridState()
@@ -161,6 +177,9 @@ fun WineListScreen(
     // User requirement: if a wine goes down to 0 bottles, hide it by default,
     // and provide the possibility to show all wines even those that are out.
     var showOutOfStockWines by remember { mutableStateOf(false) }
+    LaunchedEffect(filter) {
+        if (filter.includeEmpty) showOutOfStockWines = true
+    }
 
     // User requirement: sort wines by stock, rating, price (as well as vintage & name)
     var sortField by remember { mutableStateOf(WineSortField.VINTAGE) }
@@ -204,7 +223,11 @@ fun WineListScreen(
         val matchesSharedVisibility = !(hideReadOnlyShared && wine.isReadOnly) &&
                 !(hideWritableShared && wine.isSharedWritable)
 
-        matchesSearch && (matchesStockVisibility || selectedFilter == "OUT_OF_STOCK") && matchesFilter &&
+        val matchesStatistics =
+            (filter.country == null || WineStatistics.countryName(wine.country) == filter.country) &&
+                (filter.vintage == null || wine.vintage == filter.vintage)
+
+        matchesSearch && matchesStatistics && (matchesStockVisibility || selectedFilter == "OUT_OF_STOCK") && matchesFilter &&
                 matchesSharedVisibility
     }
 
@@ -302,17 +325,18 @@ fun WineListScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                Column {
+                Column(modifier = Modifier.weight(1f, fill = false).padding(end = 8.dp)) {
                     Text(
                         text = "Wine Collection",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
-                    Text(
-                        text = "$totalBottles in stock • $inCellarCount placed" +
-                                if (outOfStockCount > 0) " • $outOfStockCount depleted" else "",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    InsightsStrip(
+                        wines = wines,
+                        // Depleted wines are counted on their filter chip below
+                        summary = "$totalBottles in stock • $inCellarCount placed",
+                        onClick = onOpenStatistics,
+                        modifier = Modifier.padding(top = 2.dp)
                     )
                 }
 
@@ -567,6 +591,45 @@ fun WineListScreen(
                             selectedLabelColor = Color.White
                         )
                     )
+                }
+            }
+
+            // Filters opened from the statistics screen
+            if (filter.isActive) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(bottom = 4.dp)
+                ) {
+                    filter.country?.let { country ->
+                        InputChip(
+                            selected = true,
+                            onClick = { onFilterChange(filter.copy(country = null)) },
+                            label = { Text("${CountryHelper.getFlagForCountry(country)} $country", fontSize = 12.sp) },
+                            trailingIcon = { Icon(AppIcons.Close, contentDescription = "Clear country filter", modifier = Modifier.size(14.dp)) },
+                            colors = InputChipDefaults.inputChipColors(
+                                selectedContainerColor = WineBurgundyLight,
+                                selectedLabelColor = Color.White,
+                                selectedTrailingIconColor = Color.White
+                            ),
+                            modifier = Modifier.testTag("country_filter_chip")
+                        )
+                    }
+                    filter.vintage?.let { vintage ->
+                        InputChip(
+                            selected = true,
+                            onClick = { onFilterChange(filter.copy(vintage = null)) },
+                            label = { Text("Vintage $vintage", fontSize = 12.sp) },
+                            leadingIcon = { Icon(AppIcons.CalendarToday, contentDescription = null, modifier = Modifier.size(14.dp)) },
+                            trailingIcon = { Icon(AppIcons.Close, contentDescription = "Clear vintage filter", modifier = Modifier.size(14.dp)) },
+                            colors = InputChipDefaults.inputChipColors(
+                                selectedContainerColor = WineBurgundyLight,
+                                selectedLabelColor = Color.White,
+                                selectedLeadingIconColor = Color.White,
+                                selectedTrailingIconColor = Color.White
+                            ),
+                            modifier = Modifier.testTag("vintage_filter_chip")
+                        )
+                    }
                 }
             }
 

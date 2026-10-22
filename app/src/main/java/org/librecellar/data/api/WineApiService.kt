@@ -8,6 +8,7 @@ import org.librecellar.data.model.CollectionInfo
 import org.librecellar.data.model.DefaultCollectionUpdate
 import org.librecellar.data.model.UserInfo
 import org.librecellar.data.model.DecrementInventoryResponse
+import org.librecellar.data.model.Grape
 import org.librecellar.data.model.ImageUploadResponse
 import org.librecellar.data.model.LoginRequest
 import org.librecellar.data.model.LoginResponse
@@ -124,6 +125,17 @@ interface WineApiService {
 
     @PUT("api/me/default-collection")
     suspend fun setDefaultCollection(@Body update: DefaultCollectionUpdate): Response<UserInfo>
+
+    // --- The user's grape list (the server's defaults until edited) ---
+    @GET("api/me/grapes")
+    suspend fun getGrapes(): Response<List<Grape>>
+
+    /** Replaces the whole list; grapes still used by wines cannot be removed (HTTP 409). */
+    @PUT("api/me/grapes")
+    suspend fun saveGrapes(@Body grapes: List<Grape>): Response<List<Grape>>
+
+    @DELETE("api/me/grapes")
+    suspend fun resetGrapes(): Response<Unit>
 
     // --- Health check ---
     @GET("api/health")

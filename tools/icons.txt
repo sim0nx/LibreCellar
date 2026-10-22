@@ -78,3 +78,5 @@ water_drop filled
 wine_bar filled
 zoom_in filled
 zoom_out filled
+open_with filled
+bar_chart filled

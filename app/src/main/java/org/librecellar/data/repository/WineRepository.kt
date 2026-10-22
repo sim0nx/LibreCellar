@@ -13,6 +13,7 @@ import org.librecellar.data.model.AssignSlotRequest
 import org.librecellar.data.model.CellarLocation
 import org.librecellar.data.model.CollectionInfo
 import org.librecellar.data.model.DefaultCollectionUpdate
+import org.librecellar.data.model.Grape
 import org.librecellar.data.model.LoginRequest
 import org.librecellar.data.model.Supplier
 import org.librecellar.data.model.Wine
@@ -199,6 +200,33 @@ class WineRepository(private val context: Context) {
     }
 
     // --- Known Varietals / Grapes Management & Autocomplete ---
+    private val _grapes = MutableStateFlow<List<Grape>>(emptyList())
+    /** The user's grape list on the server (empty until loaded or with an older server). */
+    val grapes: StateFlow<List<Grape>> = _grapes.asStateFlow()
+
+    /** Loads the grape list; false if the server has none (an older server version). */
+    suspend fun reloadGrapes(): Boolean = withContext(Dispatchers.IO) {
+        val resp = try {
+            apiService.getGrapes()
+        } catch (e: IOException) {
+            return@withContext false
+        }
+        if (!resp.isSuccessful) return@withContext false
+        _grapes.value = resp.body().orEmpty()
+        _knownGrapes.value = computeAllKnownGrapes()
+        true
+    }
+
+    /** Replaces the grape list; the server refuses to remove grapes still used by wines. */
+    suspend fun saveGrapes(grapes: List<Grape>): Boolean = withContext(Dispatchers.IO) {
+        sendToBackend("Saving grapes", setOf(DataSet.GRAPES)) { apiService.saveGrapes(grapes) }
+    }
+
+    /** Back to the defaults; own grapes still used by wines are kept by the server. */
+    suspend fun resetGrapes(): Boolean = withContext(Dispatchers.IO) {
+        sendToBackend("Resetting grapes", setOf(DataSet.GRAPES)) { apiService.resetGrapes() }
+    }
+
     // Grapes the user typed in, kept in memory and persisted in the background
     @Volatile
     private var customGrapes: Set<String> = initialSettings.customGrapes
@@ -212,7 +240,9 @@ class WineRepository(private val context: Context) {
             .map { it.trim() }
             .filter { it.isNotBlank() }
             .distinctBy { it.lowercase() }
-        val defaults = DEFAULT_KNOWN_GRAPES
+        // The user's list from the server; the built-in defaults until it is loaded
+        val listed = _grapes.value.map { it.name }.ifEmpty { DEFAULT_KNOWN_GRAPES }
+        val defaults = listed
             .filter { def ->
                 fromWines.none { it.equals(def, ignoreCase = true) } &&
                 custom.none { it.equals(def, ignoreCase = true) }
@@ -563,6 +593,16 @@ class WineRepository(private val context: Context) {
         results
     }
 
+    /** Loads every wine (not only the pages scrolled through), e.g. for statistics. */
+    suspend fun loadAllWines() = withContext(Dispatchers.IO) {
+        val load = loadPages(Int.MAX_VALUE) { apiService.getWines(page = it, limit = PAGE_SIZE) }
+            ?: return@withContext
+        _wines.value = load.items
+        _wineCurrentPage.value = load.pages
+        _hasMoreWines.value = false
+        _knownGrapes.value = computeAllKnownGrapes()
+    }
+
     private suspend fun syncFromBackend() = withContext(Dispatchers.IO) {
         try {
             val wines = fetchAllWinesPaginated(limit = PAGE_SIZE)
@@ -575,6 +615,7 @@ class WineRepository(private val context: Context) {
             _suppliers.value = suppliers
             _supplierCurrentPage.value = loadedPages(1, suppliers.size)
             _hasMoreSuppliers.value = false
+            reloadGrapes()
             _knownGrapes.value = computeAllKnownGrapes()
         } catch (e: Exception) {
             Log.e("WineRepository", "Error syncing with backend", e)
@@ -798,7 +839,7 @@ class WineRepository(private val context: Context) {
     // server accepted it, reloads the affected lists from the server; nothing is changed locally.
     // Each returns whether the server accepted it; failures are reported via [operationErrors].
 
-    private enum class DataSet { WINES, LOCATIONS, SUPPLIERS }
+    private enum class DataSet { WINES, LOCATIONS, SUPPLIERS, GRAPES }
 
     private val _operationErrors = MutableSharedFlow<String>(extraBufferCapacity = 8)
     val operationErrors: SharedFlow<String> = _operationErrors.asSharedFlow()
@@ -852,6 +893,7 @@ class WineRepository(private val context: Context) {
             _locations.value = fetchAllLocationsPaginated(limit = PAGE_SIZE)
         }
         if (DataSet.SUPPLIERS in sets) reloadSuppliers()
+        if (DataSet.GRAPES in sets) reloadGrapes()
     }
 
     private data class PageLoad<T>(val items: List<T>, val pages: Int, val hasMore: Boolean)

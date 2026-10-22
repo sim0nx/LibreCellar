@@ -221,6 +221,13 @@ data class Supplier(
     @SerialName("access") override val access: String? = null
 ) : SharedEntry
 
+/** A grape of the user's own list on the server, suggested when entering wines. */
+@Serializable
+data class Grape(
+    @SerialName("name") val name: String,
+    @SerialName("color") val color: String // "RED" or "WHITE"
+)
+
 @Serializable
 data class AssignSlotRequest(
     @SerialName("wine_id") val wineId: String,

@@ -70,6 +70,7 @@ import org.librecellar.data.repository.WineRepository
 import org.librecellar.ui.cellar.CellarDesignScreen
 import org.librecellar.ui.inventory.QuickScanScreen
 import org.librecellar.ui.settings.ServerSettingsScreen
+import org.librecellar.ui.statistics.StatisticsScreen
 import org.librecellar.ui.suppliers.SuppliersScreen
 import org.librecellar.ui.theme.AppIcons
 import org.librecellar.ui.theme.CellarGold
@@ -79,6 +80,7 @@ import org.librecellar.ui.theme.WineBurgundyLight
 import org.librecellar.ui.wines.AddWineWizardScreen
 import org.librecellar.ui.wines.EditWineScreen
 import org.librecellar.ui.wines.WineDetailScreen
+import org.librecellar.ui.wines.WineListFilter
 import org.librecellar.ui.wines.WineListScreen
 import kotlinx.coroutines.launch
 
@@ -95,6 +97,7 @@ sealed class ScreenState {
     object AddWine : ScreenState()
     data class WineDetail(val wineId: String) : ScreenState()
     data class EditWine(val wineId: String) : ScreenState()
+    object Statistics : ScreenState()
 }
 
 @Composable
@@ -121,6 +124,9 @@ fun MainScreen(repository: WineRepository) {
 
     var activeTab by remember { mutableStateOf(MainNavigationTab.WINES) }
     var currentScreen by remember { mutableStateOf<ScreenState>(ScreenState.Main) }
+    // Country / vintage filter of the wine list, set from the statistics screen
+    var wineFilter by remember { mutableStateOf(WineListFilter()) }
+    var isLoadingAllWines by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
 
@@ -222,6 +228,31 @@ fun MainScreen(repository: WineRepository) {
             } else {
                 currentScreen = ScreenState.Main
             }
+        }
+
+        ScreenState.Statistics -> {
+            BackHandler { currentScreen = ScreenState.Main }
+            // Statistics cover every wine, not only the pages scrolled through
+            LaunchedEffect(Unit) {
+                isLoadingAllWines = true
+                repository.loadAllWines()
+                isLoadingAllWines = false
+            }
+            StatisticsScreen(
+                wines = wines,
+                isLoading = isLoadingAllWines,
+                onBack = { currentScreen = ScreenState.Main },
+                onCountrySelected = { country, includeEmpty ->
+                    wineFilter = WineListFilter(country = country, includeEmpty = includeEmpty)
+                    activeTab = MainNavigationTab.WINES
+                    currentScreen = ScreenState.Main
+                },
+                onVintageSelected = { vintage, includeEmpty ->
+                    wineFilter = WineListFilter(vintage = vintage, includeEmpty = includeEmpty)
+                    activeTab = MainNavigationTab.WINES
+                    currentScreen = ScreenState.Main
+                }
+            )
         }
 
         ScreenState.Main -> {
@@ -445,7 +476,10 @@ fun MainScreen(repository: WineRepository) {
                                 },
                                 onHideWritableSharedChange = { hide ->
                                     scope.launch { repository.updateHideWritableShared(hide) }
-                                }
+                                },
+                                filter = wineFilter,
+                                onFilterChange = { wineFilter = it },
+                                onOpenStatistics = { currentScreen = ScreenState.Statistics }
                             )
                         }
 

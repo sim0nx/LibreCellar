@@ -2,6 +2,9 @@ package org.librecellar.ui.cellar
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -91,6 +94,7 @@ import org.librecellar.ui.theme.WineBurgundy
 import org.librecellar.ui.theme.WineBurgundyDark
 import org.librecellar.ui.theme.WineBurgundyLight
 import org.librecellar.ui.theme.WineRose
+import org.librecellar.ui.theme.wineTypeColor
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -117,17 +121,25 @@ fun CellarDesignScreen(
     var locationToEdit by remember { mutableStateOf<CellarLocation?>(null) }
     var selectedWineToMove by remember { mutableStateOf<Wine?>(null) }
     var showSlotWinePicker by remember { mutableStateOf<Pair<Int, Int>?>(null) }
-    var showSlotInfoDialog by remember { mutableStateOf<Wine?>(null) }
+    // The occupied slot whose wines are listed
+    var openedSlot by remember { mutableStateOf<Pair<Int, Int>?>(null) }
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // A rack of a collection shared read-only can be viewed but not rearranged
     val isCurrentReadOnly = currentLocation?.isReadOnly == true
+    // Bottles waiting for a slot: not in any rack, or in this rack without a slot
     val unassignedWines = wines.filter {
-        it.locationId == null && it.quantity > 0 && (currentLocation?.acceptsWine(it) ?: !it.isReadOnly)
+        it.quantity > 0 &&
+            (it.locationId == null || (it.locationId == currentLocation?.id && it.slotRow == null)) &&
+            (currentLocation?.acceptsWine(it) ?: !it.isReadOnly)
     }
     val winesInCurrentLocation = wines.filter { it.locationId == currentLocation?.id }
+    // A slot can hold several wines (like in the web app)
+    val winesBySlot = winesInCurrentLocation
+        .filter { it.slotRow != null && it.slotColumn != null }
+        .groupBy { it.slotRow!! to it.slotColumn!! }
 
     val configuration = LocalConfiguration.current
     val windowSize = LocalWindowInfo.current.containerSize
@@ -139,22 +151,21 @@ fun CellarDesignScreen(
         mutableStateOf(if (isHorizontal) 96.dp else 78.dp)
     }
 
-    val onSlotClickAction: (Int, Int, Wine?) -> Unit = { rowIndex, colIndex, wineInSlot ->
-        if (isCurrentReadOnly) {
-            if (wineInSlot != null) showSlotInfoDialog = wineInSlot
-        } else if (selectedWineToMove != null) {
-            val wineId = selectedWineToMove!!.id
-            onAssignSlot(wineId, currentLocation?.id, rowIndex, colIndex)
+    val onSlotClickAction: (Int, Int, List<Wine>) -> Unit = { rowIndex, colIndex, winesInSlot ->
+        val moving = selectedWineToMove
+        if (moving != null && !isCurrentReadOnly) {
+            // A slot can take several wines, so any slot is a valid target
+            onAssignSlot(moving.id, currentLocation?.id, rowIndex, colIndex)
             scope.launch {
                 snackbarHostState.showSnackbar(
-                    "Placed ${selectedWineToMove!!.name} at Row ${rowIndex + 1}, Slot ${colIndex + 1}"
+                    "Placed ${moving.name} at Row ${rowIndex + 1}, Slot ${colIndex + 1}"
                 )
             }
             selectedWineToMove = null
-        } else if (wineInSlot != null) {
-            showSlotInfoDialog = wineInSlot
-        } else {
-            showSlotWinePicker = Pair(rowIndex, colIndex)
+        } else if (winesInSlot.isNotEmpty()) {
+            openedSlot = rowIndex to colIndex
+        } else if (!isCurrentReadOnly) {
+            showSlotWinePicker = rowIndex to colIndex
         }
     }
 
@@ -231,7 +242,7 @@ fun CellarDesignScreen(
                     // Fullscreen Extended Grid Mode
                     ExtendedCellarGrid(
                         currentLocation = currentLocation,
-                        winesInCurrentLocation = winesInCurrentLocation,
+                        winesBySlot = winesBySlot,
                         selectedWineToMove = selectedWineToMove,
                         onCancelMove = { selectedWineToMove = null },
                         onSlotClick = onSlotClickAction,
@@ -449,7 +460,7 @@ fun CellarDesignScreen(
                                                 if (!isMoving) {
                                                     scope.launch {
                                                         snackbarHostState.showSnackbar(
-                                                            "Tap any empty slot in ${currentLocation.name} to place ${wine.name}"
+                                                            "Tap a slot in ${currentLocation.name} to place ${wine.name}"
                                                         )
                                                     }
                                                 }
@@ -511,7 +522,7 @@ fun CellarDesignScreen(
                         // Right Pane: Extended Cellar Grid with Zoom and Fullscreen
                         ExtendedCellarGrid(
                             currentLocation = currentLocation,
-                            winesInCurrentLocation = winesInCurrentLocation,
+                            winesBySlot = winesBySlot,
                             selectedWineToMove = selectedWineToMove,
                             onCancelMove = { selectedWineToMove = null },
                             onSlotClick = onSlotClickAction,
@@ -761,7 +772,7 @@ fun CellarDesignScreen(
                     // Extended Cellar Grid taking maximum available height in portrait
                     ExtendedCellarGrid(
                         currentLocation = currentLocation,
-                        winesInCurrentLocation = winesInCurrentLocation,
+                        winesBySlot = winesBySlot,
                         selectedWineToMove = selectedWineToMove,
                         onCancelMove = { selectedWineToMove = null },
                         onSlotClick = onSlotClickAction,
@@ -800,7 +811,7 @@ fun CellarDesignScreen(
                                         if (!isMoving) {
                                             scope.launch {
                                                 snackbarHostState.showSnackbar(
-                                                    "Tap any empty slot in ${currentLocation.name} to place ${wine.name}"
+                                                    "Tap a slot in ${currentLocation.name} to place ${wine.name}"
                                                 )
                                             }
                                         }
@@ -889,57 +900,134 @@ fun CellarDesignScreen(
         )
     }
 
-    // 2. Slot Information Dialog (when tapping occupied slot)
-    showSlotInfoDialog?.let { wine ->
+    // 2. Occupied slot: all its wines, each can be opened, moved or taken out
+    openedSlot?.let { (row, col) ->
+        val slotWines = winesBySlot[row to col].orEmpty()
+        if (slotWines.isEmpty()) {
+            // The last wine was taken out
+            LaunchedEffect(Unit) { openedSlot = null }
+            return@let
+        }
+        val bottles = slotWines.sumOf { it.quantity }
         AlertDialog(
-            onDismissRequest = { showSlotInfoDialog = null },
+            onDismissRequest = { openedSlot = null },
             icon = {
                 Icon(imageVector = AppIcons.WineBar, contentDescription = null, tint = CellarGold)
             },
             title = {
-                Text(text = "${wine.name} (${wine.vintage})", fontWeight = FontWeight.Bold)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = "Row ${row + 1}, Slot ${col + 1}", fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "$bottles bottle${if (bottles == 1) "" else "s"}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             },
             text = {
-                Column {
-                    Text(text = "Producer: ${wine.producer ?: "Not specified"}")
-                    Text(text = "Varietal: ${wine.varietal ?: "N/A"}")
-                    Text(text = "Position: ${wine.slotLabel ?: "Cellar slot"}")
-                    Text(text = "Rating: ${wine.tastingRating?.let { "$it ★" } ?: "Not rated"}")
-                    Text(text = "In Stock: ${wine.quantity} bottles")
-                    SharedEntryBadge(entry = wine, modifier = Modifier.padding(top = 6.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 360.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    slotWines.forEach { wine ->
+                        val editable = !wine.isReadOnly && !isCurrentReadOnly
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("slot_wine_${wine.id}")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(start = 10.dp, top = 6.dp, bottom = 6.dp, end = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(width = 4.dp, height = 34.dp)
+                                        .clip(RoundedCornerShape(2.dp))
+                                        .background(wineTypeColor(wine.wineType))
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "${wine.name} (${wine.vintage})",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = listOfNotNull("${wine.quantity} in stock", wine.producer)
+                                            .joinToString(" · "),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    SharedEntryBadge(entry = wine, showOwner = false)
+                                }
+                                IconButton(
+                                    onClick = {
+                                        openedSlot = null
+                                        onWineSelected(wine)
+                                    },
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(AppIcons.Info, contentDescription = "Details", modifier = Modifier.size(18.dp))
+                                }
+                                if (editable) {
+                                    IconButton(
+                                        onClick = {
+                                            selectedWineToMove = wine
+                                            openedSlot = null
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("Tap a slot to move ${wine.name}")
+                                            }
+                                        },
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(
+                                            AppIcons.OpenWith,
+                                            contentDescription = "Move",
+                                            tint = CellarGold,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { onAssignSlot(wine.id, null, null, null) },
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(
+                                            AppIcons.Close,
+                                            contentDescription = "Remove from slot",
+                                            tint = WineRose,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = {
-                if (!wine.isReadOnly && !isCurrentReadOnly) Button(
-                    onClick = {
-                        selectedWineToMove = wine
-                        showSlotInfoDialog = null
-                        scope.launch {
-                            snackbarHostState.showSnackbar("Tap an empty slot to relocate ${wine.name}")
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = WineBurgundyLight)
-                ) {
-                    Text("Move Bottle Slot")
-                }
+                TextButton(onClick = { openedSlot = null }) { Text("Close") }
             },
             dismissButton = {
-                Row {
-                    if (!wine.isReadOnly && !isCurrentReadOnly) TextButton(
-                        onClick = {
-                            // Unassign from slot
-                            onAssignSlot(wine.id, null, null, null)
-                            showSlotInfoDialog = null
-                        }
-                    ) {
-                        Text("Remove from Slot", color = WineRose)
-                    }
-                    TextButton(onClick = {
-                        onWineSelected(wine)
-                        showSlotInfoDialog = null
-                    }) {
-                        Text("View Details")
-                    }
+                if (!isCurrentReadOnly) TextButton(
+                    onClick = {
+                        openedSlot = null
+                        showSlotWinePicker = row to col
+                    },
+                    modifier = Modifier.testTag("slot_add_wine_button")
+                ) {
+                    Icon(AppIcons.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Add a wine here")
                 }
             }
         )
@@ -947,7 +1035,11 @@ fun CellarDesignScreen(
 
     // 3. Pick Wine for Empty Slot Dialog
     showSlotWinePicker?.let { (row, col) ->
-        val candidateWines = wines.filter { it.quantity > 0 && currentLocation?.acceptsWine(it) != false }
+        // Wines already in this slot are not offered again
+        val candidateWines = wines.filter {
+            it.quantity > 0 && currentLocation?.acceptsWine(it) != false &&
+                !(it.locationId == currentLocation?.id && it.slotRow == row && it.slotColumn == col)
+        }
         AlertDialog(
             onDismissRequest = { showSlotWinePicker = null },
             title = {
@@ -987,7 +1079,11 @@ fun CellarDesignScreen(
                                             fontWeight = FontWeight.SemiBold
                                         )
                                         Text(
-                                            text = candidate.formattedLocationSummary,
+                                            text = if (candidate.isInCellar) {
+                                                "Moves it from ${candidate.formattedLocationSummary}"
+                                            } else {
+                                                "Not in a rack yet"
+                                            },
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -1015,10 +1111,10 @@ fun CellarDesignScreen(
 @Composable
 fun ExtendedCellarGrid(
     currentLocation: CellarLocation,
-    winesInCurrentLocation: List<Wine>,
+    winesBySlot: Map<Pair<Int, Int>, List<Wine>>,
     selectedWineToMove: Wine?,
     onCancelMove: () -> Unit,
-    onSlotClick: (rowIndex: Int, colIndex: Int, wineInSlot: Wine?) -> Unit,
+    onSlotClick: (rowIndex: Int, colIndex: Int, winesInSlot: List<Wine>) -> Unit,
     onSlotLongClick: (Wine) -> Unit,
     cellSize: Dp,
     onZoomIn: () -> Unit,
@@ -1067,8 +1163,9 @@ fun ExtendedCellarGrid(
                         color = Color.White
                     )
                     Spacer(modifier = Modifier.width(8.dp))
+                    val bottles = winesBySlot.values.sumOf { slot -> slot.sumOf { it.quantity } }
                     Text(
-                        text = "${winesInCurrentLocation.size}/${currentLocation.totalSlots} filled",
+                        text = "${winesBySlot.size}/${currentLocation.totalSlots} filled · $bottles bottle${if (bottles == 1) "" else "s"}",
                         style = MaterialTheme.typography.labelSmall,
                         color = CellarGold
                     )
@@ -1237,18 +1334,16 @@ fun ExtendedCellarGrid(
                             }
 
                             for (colIndex in 0 until currentLocation.columns) {
-                                val wineInSlot = winesInCurrentLocation.find {
-                                    it.slotRow == rowIndex && it.slotColumn == colIndex
-                                }
+                                val winesInSlot = winesBySlot[rowIndex to colIndex].orEmpty()
 
                                 CellarSlotCell(
                                     row = rowIndex,
                                     col = colIndex,
-                                    wine = wineInSlot,
-                                    isSelectedToMove = selectedWineToMove?.id == wineInSlot?.id,
-                                    onSlotClick = { onSlotClick(rowIndex, colIndex, wineInSlot) },
+                                    wines = winesInSlot,
+                                    isSelectedToMove = winesInSlot.any { it.id == selectedWineToMove?.id },
+                                    onSlotClick = { onSlotClick(rowIndex, colIndex, winesInSlot) },
                                     onSlotLongClick = {
-                                        if (wineInSlot != null) onSlotLongClick(wineInSlot)
+                                        winesInSlot.singleOrNull()?.let(onSlotLongClick)
                                     },
                                     cellSize = cellSize
                                 )
@@ -1266,13 +1361,14 @@ fun ExtendedCellarGrid(
 fun CellarSlotCell(
     row: Int,
     col: Int,
-    wine: Wine?,
+    wines: List<Wine>,
     isSelectedToMove: Boolean,
     onSlotClick: () -> Unit,
     onSlotLongClick: () -> Unit,
     cellSize: Dp = 80.dp
 ) {
-    val isOccupied = wine != null
+    val isOccupied = wines.isNotEmpty()
+    val large = cellSize >= 90.dp
 
     Box(
         modifier = Modifier
@@ -1289,53 +1385,99 @@ fun CellarSlotCell(
                 width = if (isSelectedToMove) 2.dp else 1.dp,
                 color = when {
                     isSelectedToMove -> CellarGold
-                    isOccupied -> WineBurgundyLight.copy(alpha = 0.8f)
+                    isOccupied -> wineTypeColor(wines.first().wineType).copy(alpha = 0.9f)
                     else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
                 },
                 shape = RoundedCornerShape(10.dp)
             )
-            .clickable { onSlotClick() }
+            .combinedClickable(onClick = onSlotClick, onLongClick = onSlotLongClick)
             .padding(4.dp)
             .testTag("slot_r${row}_c${col}"),
         contentAlignment = Alignment.Center
     ) {
         if (isOccupied) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                // Bottle Icon with badge
-                Box(contentAlignment = Alignment.Center) {
+            val single = wines.singleOrNull()
+            if (single != null) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
                     Icon(
                         imageVector = AppIcons.WineBar,
                         contentDescription = "Occupied Slot",
-                        tint = if (isSelectedToMove) CellarGold else WineRose,
-                        modifier = Modifier.size(if (cellSize >= 90.dp) 26.dp else 20.dp)
+                        tint = if (isSelectedToMove) CellarGold else wineTypeColor(single.wineType),
+                        modifier = Modifier.size(if (large) 26.dp else 20.dp)
+                    )
+                    Text(
+                        text = "${single.vintage}",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = if (large) 11.sp else 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = CellarGold
+                    )
+                    Text(
+                        text = single.name,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = if (large) 10.sp else 8.5.sp,
+                        maxLines = if (large) 2 else 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                        color = Color.White
                     )
                 }
+            } else {
+                // Several wines: one line each, marked with its wine type colour
+                val fitting = ((cellSize.value - 22f) / 12f).toInt().coerceAtLeast(2)
+                val shown = if (wines.size > fitting) wines.take(fitting - 1) else wines
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    shown.forEach { wine ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 3.dp, height = 10.dp)
+                                    .background(wineTypeColor(wine.wineType))
+                            )
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(
+                                text = "${wine.vintage} ${wine.name}",
+                                fontSize = if (large) 9.sp else 8.sp,
+                                lineHeight = 10.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                color = Color.White
+                            )
+                        }
+                    }
+                    if (shown.size < wines.size) {
+                        Text(
+                            text = "+${wines.size - shown.size} more",
+                            fontSize = 8.sp,
+                            lineHeight = 10.sp,
+                            color = CellarGold
+                        )
+                    }
+                }
+            }
+            // Bottles in this slot
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(WineBurgundyLight)
+                    .padding(horizontal = 5.dp, vertical = 1.dp)
+            ) {
                 Text(
-                    text = "${wine.vintage}",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontSize = if (cellSize >= 90.dp) 11.sp else 9.sp,
+                    text = "${wines.sumOf { it.quantity }}",
+                    fontSize = 9.sp,
+                    lineHeight = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = CellarGold
-                )
-                Text(
-                    text = wine.name,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontSize = if (cellSize >= 90.dp) 10.sp else 8.5.sp,
-                    maxLines = if (cellSize >= 90.dp) 2 else 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
                     color = Color.White
                 )
-                if (cellSize >= 96.dp && wine.quantity > 1) {
-                    Text(
-                        text = "×${wine.quantity}",
-                        fontSize = 8.sp,
-                        color = CellarGold.copy(alpha = 0.85f)
-                    )
-                }
             }
         } else {
             Column(
@@ -1345,7 +1487,7 @@ fun CellarSlotCell(
                 Text(
                     text = "+",
                     style = MaterialTheme.typography.titleMedium,
-                    fontSize = if (cellSize >= 90.dp) 20.sp else 16.sp,
+                    fontSize = if (large) 20.sp else 16.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                 )
                 if (cellSize >= 85.dp) {

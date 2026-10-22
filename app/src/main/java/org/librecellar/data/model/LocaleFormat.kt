@@ -98,6 +98,14 @@ object LocaleFormat {
         NumberFormat.getCurrencyInstance(locale).apply { currency = currencyOf(currencyCode) }
             .format(value)
 
+    /** A price without cents, for chart labels, e.g. "15 €" or "$15". */
+    fun formatWholePrice(value: Double, currencyCode: String? = null): String =
+        NumberFormat.getCurrencyInstance(locale).apply {
+            currency = currencyOf(currencyCode)
+            maximumFractionDigits = 0
+            minimumFractionDigits = 0
+        }.format(value)
+
     /** Example value for placeholders, e.g. "45,00" or "45.00". */
     fun example(value: Double): String =
         NumberFormat.getNumberInstance(locale).apply {
