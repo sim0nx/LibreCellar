@@ -61,6 +61,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
@@ -75,6 +76,10 @@ import org.librecellar.ui.components.CurrencyPicker
 import org.librecellar.ui.components.BarcodeScannerDialog
 import org.librecellar.ui.components.CountryDropdownSelect
 import org.librecellar.ui.components.GrapeTagInput
+import org.librecellar.ui.components.LabelField
+import org.librecellar.ui.components.LabelPhotoTiles
+import org.librecellar.ui.components.LabelSide
+import org.librecellar.ui.components.LabelSuggestionsPanel
 import org.librecellar.ui.components.PhotoCaptureDialog
 import org.librecellar.ui.components.RatingBar
 import org.librecellar.ui.components.WineBottleImage
@@ -275,6 +280,9 @@ fun AddWineWizardScreen(
     var selectedPriceTier by remember { mutableStateOf<WinePriceTier?>(null) }
     var purchaseLocation by remember { mutableStateOf("") }
     var photoUrl by remember { mutableStateOf<String?>(null) }
+    var photoBackUrl by remember { mutableStateOf<String?>(null) }
+    // Which picture the photo dialog is for
+    var photoSide by remember { mutableStateOf(LabelSide.FRONT) }
     var barcode by remember { mutableStateOf("") }
     var quantityText by remember { mutableStateOf("1") }
     var wineType by remember { mutableStateOf(WineType.RED.name) }
@@ -329,6 +337,7 @@ fun AddWineWizardScreen(
             currency = currency,
             purchaseLocation = purchaseLocation.ifBlank { null },
             photoUrl = photoUrl,
+            photoBackUrl = photoBackUrl,
             barcode = barcode.ifBlank { null },
             priceTier = finalTier,
             quantity = quantity,
@@ -339,6 +348,58 @@ fun AddWineWizardScreen(
             wineType = wineType
         )
         onWineCreated(newWine)
+    }
+
+    // Details read from the label pictures (on the device) fill these fields on request
+    fun labelValue(field: LabelField): String = when (field) {
+        LabelField.NAME -> name
+        LabelField.VINTAGE -> vintageText
+        LabelField.SIZE -> sizeText
+        LabelField.ALCOHOL -> alcoholText
+        LabelField.COUNTRY -> country
+        LabelField.PRODUCER -> producer
+    }
+
+    fun applyLabel(field: LabelField, value: String) {
+        when (field) {
+            LabelField.NAME -> name = value
+            LabelField.VINTAGE -> vintageText = value
+            LabelField.SIZE -> sizeText = value
+            LabelField.ALCOHOL -> alcoholText = value
+            LabelField.COUNTRY -> country = value
+            LabelField.PRODUCER -> producer = value
+        }
+    }
+
+    // Still blank or at the form's default, so "Use all" may fill it
+    fun labelUnset(field: LabelField): Boolean = when (field) {
+        LabelField.VINTAGE -> vintageText.isBlank() || vintageText == Year.now().value.toString()
+        LabelField.SIZE -> sizeText.isBlank() || sizeText == "0.75L"
+        else -> labelValue(field).isBlank()
+    }
+
+    val labelSection: @Composable (Dp) -> Unit = { tileSize ->
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            LabelPhotoTiles(
+                front = photoUrl,
+                back = photoBackUrl,
+                onPick = { side ->
+                    photoSide = side
+                    showPhotoDialog = true
+                },
+                onClear = { side -> if (side == LabelSide.FRONT) photoUrl = null else photoBackUrl = null },
+                wineType = wineType,
+                tileSize = tileSize,
+                modifier = Modifier.fillMaxWidth()
+            )
+            LabelSuggestionsPanel(
+                front = photoUrl,
+                back = photoBackUrl,
+                currentValue = ::labelValue,
+                isUnset = ::labelUnset,
+                onApply = ::applyLabel
+            )
+        }
     }
 
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -583,9 +644,8 @@ fun AddWineWizardScreen(
                                 2 -> {
                                     // Step 2: Photo of bottle
                                     WizardStepPhoto(
-                                        photoUrl = photoUrl,
-                                        onPhotoClick = { showPhotoDialog = true },
-                                        onClearPhoto = { photoUrl = null },
+                                        hasPhoto = photoUrl != null || photoBackUrl != null,
+                                        labelSection = { labelSection(140.dp) },
                                         onNext = { currentWizardStep = 3 }
                                     )
                                 }
@@ -701,8 +761,7 @@ fun AddWineWizardScreen(
                         onLocationChange = { purchaseLocation = it },
                         suppliers = suppliers,
                         onAddSupplierClick = { showNewSupplierDialog = true },
-                        photoUrl = photoUrl,
-                        onPhotoClick = { showPhotoDialog = true },
+                        labelSection = { labelSection(110.dp) },
                         barcode = barcode,
                         onBarcodeScanClick = { showScannerDialog = true },
                         onBarcodeChange = { barcode = it },
@@ -742,7 +801,7 @@ fun AddWineWizardScreen(
     if (showPhotoDialog) {
         PhotoCaptureDialog(
             onPhotoSelected = { path ->
-                photoUrl = path
+                if (photoSide == LabelSide.FRONT) photoUrl = path else photoBackUrl = path
                 showPhotoDialog = false
             },
             onDismiss = { showPhotoDialog = false }
@@ -887,9 +946,8 @@ fun WizardStepBarcode(
 
 @Composable
 fun WizardStepPhoto(
-    photoUrl: String?,
-    onPhotoClick: () -> Unit,
-    onClearPhoto: () -> Unit,
+    hasPhoto: Boolean,
+    labelSection: @Composable () -> Unit,
     onNext: () -> Unit
 ) {
     Column(
@@ -903,120 +961,35 @@ fun WizardStepPhoto(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Icon(
-                imageVector = AppIcons.CameraAlt,
-                contentDescription = null,
-                tint = CellarGold,
-                modifier = Modifier.size(56.dp)
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Step 2: Bottle & Label Photo",
+                text = "Step 2: Label Photos",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Take a picture or select one from your device to visually identify the bottle in your cellar.",
+                text = "Photograph the front label, and the back label if you like. Name, vintage, " +
+                    "volume and alcohol are read from them on this device and offered for the next step.",
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
             )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Photo Preview or Placeholder
-            Box(
-                modifier = Modifier
-                    .size(180.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .border(2.dp, CellarGold.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
-                    .clickable { onPhotoClick() },
-                contentAlignment = Alignment.Center
-            ) {
-                if (!photoUrl.isNullOrBlank()) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        WineBottleImage(
-                            photoUrl = photoUrl,
-                            wineType = "RED",
-                            modifier = Modifier.fillMaxSize(),
-                            shape = RoundedCornerShape(14.dp)
-                        )
-                        IconButton(
-                            onClick = onClearPhoto,
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(6.dp)
-                                .size(32.dp)
-                                .background(Color.Black.copy(alpha = 0.65f), CircleShape)
-                                .testTag("clear_photo_button")
-                        ) {
-                            Icon(
-                                imageVector = AppIcons.Close,
-                                contentDescription = "Remove photo",
-                                tint = Color.White,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                } else {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Icon(
-                            imageVector = AppIcons.CameraAlt,
-                            contentDescription = null,
-                            tint = CellarGold.copy(alpha = 0.8f),
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Tap to Take / Select Photo",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "Camera or Device Photos",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            Button(
-                onClick = onPhotoClick,
-                colors = ButtonDefaults.buttonColors(containerColor = WineBurgundyLight),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 32.dp)
-                    .testTag("wizard_pick_photo_button")
-            ) {
-                Icon(imageVector = AppIcons.CameraAlt, contentDescription = null, tint = CellarGold)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(if (photoUrl == null) "Take Photo or Select" else "Change Bottle Photo")
-            }
+            Spacer(modifier = Modifier.height(14.dp))
+            labelSection()
         }
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp),
+                .padding(top = 16.dp, bottom = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             OutlinedButton(
                 onClick = onNext,
                 modifier = Modifier.weight(1f)
             ) {
-                Text(if (photoUrl == null) "Skip Step" else "Next")
+                Text(if (hasPhoto) "Next" else "Skip Step")
             }
             Button(
                 onClick = onNext,
@@ -1637,8 +1610,7 @@ fun ManualWineEntryForm(
     onLocationChange: (String) -> Unit,
     suppliers: List<Supplier>,
     onAddSupplierClick: () -> Unit,
-    photoUrl: String?,
-    onPhotoClick: () -> Unit,
+    labelSection: @Composable () -> Unit,
     barcode: String,
     onBarcodeScanClick: () -> Unit,
     onBarcodeChange: (String) -> Unit,
@@ -1836,39 +1808,8 @@ fun ManualWineEntryForm(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Photo row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (!photoUrl.isNullOrBlank()) {
-                    WineBottleImage(
-                        photoUrl = photoUrl,
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        shape = RoundedCornerShape(8.dp),
-                        iconSize = 24.dp
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                }
-                Column {
-                    Text("Bottle Photo", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        text = if (!photoUrl.isNullOrBlank()) "Photo attached" else "No photo selected",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            OutlinedButton(onClick = onPhotoClick) {
-                Icon(imageVector = AppIcons.CameraAlt, contentDescription = null, tint = CellarGold)
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(if (!photoUrl.isNullOrBlank()) "Change Photo" else "Add Photo")
-            }
-        }
+        // Front and back label pictures, with details read from them
+        labelSection()
 
         // Supplier with search & add on the fly
         Column {

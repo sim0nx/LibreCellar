@@ -113,6 +113,8 @@ dependencies {
   implementation(libs.androidx.camera.lifecycle)
   implementation(libs.androidx.camera.view)
   implementation(libs.mlkit.barcode.scanning)
+  // Reading wine labels (name, vintage, volume, alcohol) on the device
+  implementation(libs.mlkit.text.recognition)
   // Bottle pictures
   implementation(libs.coil.compose)
   implementation(libs.coil.network.okhttp)

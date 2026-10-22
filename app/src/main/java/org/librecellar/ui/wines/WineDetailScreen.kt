@@ -3,6 +3,8 @@ package org.librecellar.ui.wines
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -148,25 +150,64 @@ fun WineDetailScreen(
                     modifier = Modifier.padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    if (!wine.photoUrl.isNullOrBlank()) {
-                        Box(
+                    // Front picture and, when there is one, the back label: swipe between them
+                    val pictures = listOfNotNull(
+                        wine.photoUrl?.takeIf { it.isNotBlank() }?.let { it to "Front" },
+                        wine.photoBackUrl?.takeIf { it.isNotBlank() }?.let { it to "Back label" }
+                    )
+                    if (pictures.isNotEmpty()) {
+                        val pagerState = rememberPagerState { pictures.size }
+                        HorizontalPager(
+                            state = pagerState,
+                            pageSpacing = 12.dp,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(220.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFF1E1418))
-                                .border(1.5.dp, CellarGold.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            WineBottleImage(
-                                photoUrl = wine.photoUrl,
-                                wineType = wine.wineType,
-                                modifier = Modifier.fillMaxSize(),
-                                shape = RoundedCornerShape(12.dp),
-                                contentScale = ContentScale.Fit,
-                                iconSize = 64.dp,
-                                contentDescription = "${wine.name} bottle photo"
-                            )
+                                .testTag("detail_photo_pager")
+                        ) { page ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color(0xFF1E1418))
+                                    .border(1.5.dp, CellarGold.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                WineBottleImage(
+                                    photoUrl = pictures[page].first,
+                                    wineType = wine.wineType,
+                                    modifier = Modifier.fillMaxSize(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentScale = ContentScale.Fit,
+                                    iconSize = 64.dp,
+                                    contentDescription = "${wine.name}: ${pictures[page].second}"
+                                )
+                            }
+                        }
+                        if (pictures.size > 1) {
+                            Row(
+                                modifier = Modifier.padding(top = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                pictures.forEachIndexed { index, (_, label) ->
+                                    val current = pagerState.currentPage == index
+                                    Text(
+                                        text = label,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = if (current) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (current) CellarGold else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    if (index < pictures.lastIndex) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(4.dp)
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+                                        )
+                                    }
+                                }
+                            }
                         }
                     } else {
                         Box(

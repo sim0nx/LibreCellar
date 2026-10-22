@@ -140,6 +140,8 @@ data class Wine(
     @SerialName("currency") val currency: String? = null,
     @SerialName("purchase_location") val purchaseLocation: String? = null, // Vendor/Shop name
     @SerialName("photo_url") val photoUrl: String? = null,
+    // Optional picture of the back label
+    @SerialName("photo_back_url") val photoBackUrl: String? = null,
     @SerialName("barcode") val barcode: String? = null,
     @SerialName("price_tier") val priceTier: String? = null, // Optional user-assigned or suggested tier
     // Inventory & Cellar tracking:

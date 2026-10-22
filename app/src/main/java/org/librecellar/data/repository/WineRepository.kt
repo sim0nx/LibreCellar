@@ -939,15 +939,15 @@ class WineRepository(private val context: Context) {
     }
 
     /** Uploads a picture that still refers to a file on the device; null if that failed. */
+    /** Uploads pictures that still refer to a file on the device; null if that failed. */
     private suspend fun withUploadedPhoto(wine: Wine): Wine? {
-        val photo = wine.photoUrl
-        if (photo.isNullOrBlank() || WineImageHelper.isPreset(photo) ||
-            !(photo.startsWith("/") || photo.startsWith("file:") || photo.startsWith("content:"))
-        ) {
-            return wine
-        }
+        fun isLocal(photo: String?) = !photo.isNullOrBlank() && !WineImageHelper.isPreset(photo) &&
+            (photo.startsWith("/") || photo.startsWith("file:") || photo.startsWith("content:"))
         return try {
-            wine.copy(photoUrl = uploadBottleImage(photo))
+            wine.copy(
+                photoUrl = wine.photoUrl?.let { if (isLocal(it)) uploadBottleImage(it) else it },
+                photoBackUrl = wine.photoBackUrl?.let { if (isLocal(it)) uploadBottleImage(it) else it }
+            )
         } catch (e: Exception) {
             Log.w("WineRepository", "Picture upload failed", e)
             _operationErrors.tryEmit("Saving wine failed: picture could not be uploaded")
@@ -973,10 +973,10 @@ class WineRepository(private val context: Context) {
     }
 
     suspend fun deleteWine(id: String): Boolean = withContext(Dispatchers.IO) {
-        // The backend also removes the wine's picture once nothing refers to it
-        val photo = _wines.value.find { it.id == id }?.photoUrl
+        // The backend also removes the wine's pictures once nothing refers to them
+        val wine = _wines.value.find { it.id == id }
         val ok = sendToBackend("Deleting wine", setOf(DataSet.WINES)) { apiService.deleteWine(id) }
-        if (ok) WineImageHelper.removeCachedImage(context, photo)
+        if (ok) listOf(wine?.photoUrl, wine?.photoBackUrl).forEach { WineImageHelper.removeCachedImage(context, it) }
         ok
     }
 

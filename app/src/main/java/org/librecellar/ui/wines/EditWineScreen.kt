@@ -29,6 +29,10 @@ import androidx.core.graphics.toColorInt
 import org.librecellar.data.model.LocaleFormat
 import org.librecellar.ui.components.BarcodeScannerDialog
 import org.librecellar.ui.components.CurrencyPicker
+import org.librecellar.ui.components.LabelField
+import org.librecellar.ui.components.LabelPhotoTiles
+import org.librecellar.ui.components.LabelSide
+import org.librecellar.ui.components.LabelSuggestionsPanel
 import org.librecellar.ui.components.PhotoCaptureDialog
 import org.librecellar.ui.components.WineBottleImage
 import androidx.compose.material3.Button
@@ -142,6 +146,9 @@ fun EditWineScreen(
     var comments by remember(wine) { mutableStateOf(wine.comments ?: "") }
     var barcode by remember(wine) { mutableStateOf(wine.barcode ?: "") }
     var photoUrl by remember(wine) { mutableStateOf(wine.photoUrl ?: "") }
+    var photoBackUrl by remember(wine) { mutableStateOf(wine.photoBackUrl ?: "") }
+    // Which picture the photo dialog is for
+    var photoSide by remember { mutableStateOf(LabelSide.FRONT) }
     var showBarcodeScanner by remember { mutableStateOf(false) }
     var showPhotoDialog by remember { mutableStateOf(false) }
 
@@ -223,7 +230,8 @@ fun EditWineScreen(
                                     tastingRating = if (tastingRating > 0) tastingRating else null,
                                     comments = comments.trim().ifBlank { null },
                                     barcode = barcode.trim().ifBlank { null },
-                                    photoUrl = photoUrl.trim().ifBlank { null }
+                                    photoUrl = photoUrl.trim().ifBlank { null },
+                                    photoBackUrl = photoBackUrl.trim().ifBlank { null }
                                 )
                                 onSaveWine(updated)
                             }
@@ -787,50 +795,57 @@ fun EditWineScreen(
 
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    // Bottle Photo Field
-                    Row(
+                    // Front and back label pictures; details read from them can be applied
+                    LabelPhotoTiles(
+                        front = photoUrl.ifBlank { null },
+                        back = photoBackUrl.ifBlank { null },
+                        onPick = { side ->
+                            photoSide = side
+                            showPhotoDialog = true
+                        },
+                        onClear = { side -> if (side == LabelSide.FRONT) photoUrl = "" else photoBackUrl = "" },
+                        wineType = selectedType.name,
+                        tileSize = 110.dp,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            WineBottleImage(
-                                photoUrl = photoUrl.ifBlank { null },
-                                wineType = selectedType.name,
-                                modifier = Modifier
-                                    .size(46.dp)
-                                    .clip(RoundedCornerShape(8.dp)),
-                                shape = RoundedCornerShape(8.dp),
-                                iconSize = 24.dp
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text("Bottle Photo", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                                Text(
-                                    text = if (photoUrl.isNotBlank()) "Photo attached" else "No photo set",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                            .testTag("edit_wine_label_photos")
+                    )
+                    LabelSuggestionsPanel(
+                        // Only pictures taken now are read: the saved ones were read when added
+                        front = photoUrl.ifBlank { null }?.takeIf { it != wine.photoUrl },
+                        back = photoBackUrl.ifBlank { null }?.takeIf { it != wine.photoBackUrl },
+                        currentValue = { field ->
+                            when (field) {
+                                LabelField.NAME -> name
+                                LabelField.VINTAGE -> vintageText
+                                LabelField.SIZE -> bottleSize
+                                LabelField.ALCOHOL -> alcoholText
+                                LabelField.COUNTRY -> country
+                                LabelField.PRODUCER -> producer
                             }
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            if (photoUrl.isNotBlank()) {
-                                TextButton(onClick = { photoUrl = "" }) {
-                                    Text("Remove", color = WineRose, fontSize = 12.sp)
-                                }
+                        },
+                        isUnset = { field ->
+                            when (field) {
+                                LabelField.NAME -> name.isBlank()
+                                LabelField.VINTAGE -> vintageText.isBlank()
+                                LabelField.SIZE -> bottleSize.isBlank() || bottleSize == "0.75L"
+                                LabelField.ALCOHOL -> alcoholText.isBlank()
+                                LabelField.COUNTRY -> country.isBlank()
+                                LabelField.PRODUCER -> producer.isBlank()
                             }
-                            OutlinedButton(
-                                onClick = { showPhotoDialog = true },
-                                modifier = Modifier.testTag("edit_wine_change_photo_btn")
-                            ) {
-                                Icon(imageVector = AppIcons.CameraAlt, contentDescription = null, tint = CellarGold, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(if (photoUrl.isNotBlank()) "Change" else "Add Photo")
+                        },
+                        onApply = { field, value ->
+                            when (field) {
+                                LabelField.NAME -> name = value
+                                LabelField.VINTAGE -> vintageText = value
+                                LabelField.SIZE -> bottleSize = value
+                                LabelField.ALCOHOL -> alcoholText = value
+                                LabelField.COUNTRY -> country = value
+                                LabelField.PRODUCER -> producer = value
                             }
-                        }
-                    }
+                        },
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
                 }
             }
 
@@ -871,7 +886,8 @@ fun EditWineScreen(
                                 tastingRating = if (tastingRating > 0) tastingRating else null,
                                 comments = comments.trim().ifBlank { null },
                                 barcode = barcode.trim().ifBlank { null },
-                                photoUrl = photoUrl.trim().ifBlank { null }
+                                photoUrl = photoUrl.trim().ifBlank { null },
+                                photoBackUrl = photoBackUrl.trim().ifBlank { null }
                             )
                             onSaveWine(updated)
                         }
@@ -920,7 +936,7 @@ fun EditWineScreen(
         if (showPhotoDialog) {
             PhotoCaptureDialog(
                 onPhotoSelected = { path ->
-                    photoUrl = path
+                    if (photoSide == LabelSide.FRONT) photoUrl = path else photoBackUrl = path
                     showPhotoDialog = false
                 },
                 onDismiss = { showPhotoDialog = false }
