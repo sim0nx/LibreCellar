@@ -5,6 +5,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.core.net.toUri
 import java.io.File
+import org.librecellar.data.LocalNetwork
 import org.librecellar.data.api.WineApiService
 import org.librecellar.data.model.AssignSlotRequest
 import org.librecellar.data.model.CellarLocation
@@ -243,6 +244,9 @@ class WineRepository(private val context: Context) {
         // Backend page size used for all paginated lists
         private const val PAGE_SIZE = 20
 
+        const val LOCAL_NETWORK_HINT =
+            "The server is on your local network: allow \"Nearby devices\" for LibreCellar " +
+                "(Android settings → Apps → LibreCellar → Permissions)."
 
         val DEFAULT_KNOWN_GRAPES = listOf(
             "Cabernet Sauvignon", "Merlot", "Pinot Noir", "Chardonnay", "Sauvignon Blanc",
@@ -477,6 +481,8 @@ class WineRepository(private val context: Context) {
                 isSuccess = false,
                 message = if (errorMsg.contains("SSLHandshakeException", ignoreCase = true)) {
                     "SSL Handshake failed: Self-signed certificate? Try turning off SSL Verification in settings."
+                } else if (LocalNetwork.isBlocked(context, _backendUrl.value)) {
+                    LOCAL_NETWORK_HINT
                 } else {
                     "Could not reach server: $errorMsg"
                 }
@@ -794,6 +800,11 @@ class WineRepository(private val context: Context) {
 
     private val _operationErrors = MutableSharedFlow<String>(extraBufferCapacity = 8)
     val operationErrors: SharedFlow<String> = _operationErrors.asSharedFlow()
+
+    /** Shows [message] like a failed operation (e.g. a declined permission). */
+    fun reportProblem(message: String) {
+        _operationErrors.tryEmit(message)
+    }
 
     private suspend fun <T> sendToBackend(
         action: String,

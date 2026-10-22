@@ -4,6 +4,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Android 17+: reaching a server on the local network (e.g. a home server) -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- The camera is optional: barcodes can be typed in and pictures picked from the gallery -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />

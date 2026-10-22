@@ -1,6 +1,9 @@
 package org.librecellar.ui
 
+import android.Manifest
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -50,12 +53,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.librecellar.R
+import org.librecellar.data.LocalNetwork
 import org.librecellar.data.model.CellarLocation
 import org.librecellar.data.model.Supplier
 import org.librecellar.data.model.Wine
@@ -116,6 +123,8 @@ fun MainScreen(repository: WineRepository) {
     var currentScreen by remember { mutableStateOf<ScreenState>(ScreenState.Main) }
 
     val scope = rememberCoroutineScope()
+
+    LocalNetworkAccess(repository)
 
     // Operations the server rejected or could not receive (the server manages all data)
     val operationSnackbar = remember { SnackbarHostState() }
@@ -514,5 +523,29 @@ fun MainScreen(repository: WineRepository) {
             .navigationBarsPadding()
             .padding(bottom = 72.dp)
     )
+    }
+}
+
+/**
+ * Android 17 needs the "Nearby devices" permission to reach a server on the local network (such as
+ * a home server). Asks for it whenever the configured server is local, and reconnects once granted.
+ */
+@Composable
+private fun LocalNetworkAccess(repository: WineRepository) {
+    if (!LocalNetwork.permissionRequired()) return
+    val context = LocalContext.current
+    val backendUrl by repository.backendUrl.collectAsState()
+    val scope = rememberCoroutineScope()
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            scope.launch { repository.checkConnectionAndSync() }
+        } else {
+            repository.reportProblem(WineRepository.LOCAL_NETWORK_HINT)
+        }
+    }
+    LaunchedEffect(backendUrl) {
+        if (withContext(Dispatchers.IO) { LocalNetwork.isBlocked(context, backendUrl) }) {
+            launcher.launch(Manifest.permission.ACCESS_LOCAL_NETWORK)
+        }
     }
 }
