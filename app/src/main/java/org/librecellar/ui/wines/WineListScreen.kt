@@ -1146,19 +1146,30 @@ fun WineTableRowCard(
 
             // Location
             Column(modifier = Modifier.weight(1.3f)) {
-                Text(
-                    text = location?.name ?: "None",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (location != null) CellarGold else MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = wine.slotLabel ?: "Unassigned",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontSize = 10.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (location != null) {
+                    Text(
+                        text = location.name,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CellarGold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    wine.slotLabel?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    Text(
+                        text = "Unassigned",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
             }
 
             // Tier / Price & Rating

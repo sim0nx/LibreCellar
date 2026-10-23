@@ -218,7 +218,7 @@ data class Supplier(
     @SerialName("country") val country: String? = null,
     @SerialName("website") val website: String? = null,
     @SerialName("notes") val notes: String? = null,
-    @SerialName("date_added") val dateAdded: String = LocalDate.now().toString(), // ISO yyyy-MM-dd
+    @SerialName("date_added") val dateAdded: String? = null, // ISO yyyy-MM-dd; null for merchants added before servers stored it
     @SerialName("owner") override val owner: String? = null,
     @SerialName("access") override val access: String? = null
 ) : SharedEntry

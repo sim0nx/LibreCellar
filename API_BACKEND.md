@@ -176,12 +176,12 @@ This prevents false positives where an unauthenticated or misconfigured server m
 ```json
 {
   "id": "c1f7b029-798c-443b-873b-e0f3408092ec",
-  "name": "Château Margaux",
+  "name": "Château Belle Rive",
   "vintage": 2015,
   "country": "France",
   "region": "Bordeaux",
   "varietal": "Cabernet Sauvignon Blend",
-  "producer": "Château Margaux",
+  "producer": "Château Belle Rive",
   "wine_type": "RED",
   "purchase_date": "2021-09-15",
   "alcohol_percent": 13.5,
@@ -190,7 +190,7 @@ This prevents false positives where an unauthenticated or misconfigured server m
   "comments": "Decanted 2 hours, silky tannins, extraordinary finish.",
   "purchase_price": 750.00,
   "currency": "EUR",
-  "purchase_location": "Berry Bros. & Rudd",
+  "purchase_location": "Cave du Village",
   "photo_url": null,
   "barcode": "3421580001015",
   "price_tier": "VERY_EXPENSIVE",
@@ -226,16 +226,19 @@ This prevents false positives where an unauthenticated or misconfigured server m
 ```json
 {
   "id": "sup-1",
-  "name": "Berry Bros. & Rudd",
-  "contact_name": "Oliver Twist",
-  "email": "orders@bbr.com",
-  "phone": "+44 800 280 2440",
-  "website": "https://www.bbr.com",
-  "city": "London",
-  "country": "United Kingdom",
-  "notes": "Primary supplier for Bordeaux futures and allocations."
+  "name": "Cave du Village",
+  "contact_name": "Anne Martin",
+  "email": "orders@example.com",
+  "phone": "+352 000 000",
+  "website": "https://shop.example.com",
+  "city": "Remich",
+  "country": "Luxembourg",
+  "notes": "Primary supplier for Bordeaux futures and allocations.",
+  "type": "Wine Merchant",
+  "date_added": "2024-05-01"
 }
 ```
+*`type` is one of the app's merchant types (default `"Wine Merchant"`). `date_added` is an ISO date; the server sets it to the current date when a merchant is created without one, and older merchants may have `null`. A client that sends neither field (e.g. an older app version) leaves both unchanged on update.*
 
 ### Assign Slot Request (`AssignSlotRequest`)
 ```json

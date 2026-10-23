@@ -375,7 +375,7 @@ fun SuppliersScreen(
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
-                                            text = "$winesCount bottles sourced",
+                                            text = if (winesCount == 1) "1 wine sourced" else "$winesCount wines sourced",
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.SemiBold,
                                             color = CellarGold
@@ -383,7 +383,7 @@ fun SuppliersScreen(
                                     }
 
                                     // Date Added Tracker
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (supplier.dateAdded != null) Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(
                                             imageVector = AppIcons.CalendarToday,
                                             contentDescription = "Date Added",
@@ -512,7 +512,9 @@ fun SupplierFormDialog(
     var country by remember { mutableStateOf(supplierToEdit?.country ?: "") }
     var website by remember { mutableStateOf(supplierToEdit?.website ?: "") }
     var notes by remember { mutableStateOf(supplierToEdit?.notes ?: "") }
-    var dateAdded by remember { mutableStateOf(supplierToEdit?.dateAdded ?: LocalDate.now().toString()) }
+    var dateAdded by remember {
+        mutableStateOf(if (supplierToEdit == null) LocalDate.now().toString() else supplierToEdit.dateAdded.orEmpty())
+    }
 
     val types = listOf(
         "Wine Merchant",
@@ -637,7 +639,7 @@ fun SupplierFormDialog(
                                 country = country.ifBlank { null },
                                 website = website.ifBlank { null },
                                 notes = notes.ifBlank { null },
-                                dateAdded = dateAdded.ifBlank { baseSupplier.dateAdded }
+                                dateAdded = dateAdded.ifBlank { null }
                             )
                         )
                     }
