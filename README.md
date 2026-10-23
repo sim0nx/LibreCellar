@@ -47,6 +47,8 @@ To be clear about what we do not control:
   login token can't be read on another device.
 - **Google Play** handles installs and updates under Google's own terms.
 
+The full details are in the [privacy policy](PRIVACY.md).
+
 ## Getting started
 
 1. Set up the LibreCellar server on your network (release coming soon).
