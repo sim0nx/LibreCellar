@@ -238,7 +238,7 @@ This prevents false positives where an unauthenticated or misconfigured server m
   "date_added": "2024-05-01"
 }
 ```
-*`type` is one of the app's merchant types (default `"Wine Merchant"`). `date_added` is an ISO date; the server sets it to the current date when a merchant is created without one, and older merchants may have `null`. A client that sends neither field (e.g. an older app version) leaves both unchanged on update.*
+*`type` is one of the app's merchant types (default `"Wine Merchant"`). `date_added` is an ISO date; the server sets it to the current date when a merchant is created without one, and merchants that existed before the upgrade get the date of the upgrade. A client that sends neither field (e.g. an older app version) leaves both unchanged on update.*
 
 ### Assign Slot Request (`AssignSlotRequest`)
 ```json
