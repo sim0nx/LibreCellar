@@ -25,3 +25,8 @@ keystore.properties
 
 # Signed bundles and R8 mapping written by Android Studio's signing wizard
 /app/release
+
+# Local Python tooling (e.g. git-filter-repo)
+/.venv
+/pyproject.toml
+/uv.lock

@@ -1,19 +1,16 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   Backup rules for Android 12 and newer (Auto Backup and device-to-device transfer).
+   Settings are kept; bottle and label photos stay on the phone, they are loaded again from the
+   server. The login token is backed up encrypted, but its key never leaves the phone.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="file" path="bottle_cache/" />
+        <exclude domain="file" path="bottle_photos/" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="file" path="bottle_cache/" />
+        <exclude domain="file" path="bottle_photos/" />
     </device-transfer>
-    -->
 </data-extraction-rules>
