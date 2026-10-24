@@ -3,7 +3,7 @@
 **LibreCellar for Android**
 Effective date: 23 October 2026
 
-LibreCellar is an open source app for managing a wine cellar. It works with a LibreCellar server
+LibreCellar is an open source app for managing a wine cellar. It works with a [LibreCellar server](https://github.com/sim0nx/LibreCellar_backend)
 that **you** run on your own hardware. There is no LibreCellar cloud service: the developer does
 not operate any server for the app and does not receive, collect or store any of your data.
 

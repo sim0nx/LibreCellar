@@ -11,8 +11,8 @@
 ---
 
 LibreCellar is an open source Android app for managing a wine cellar. It works with the
-**LibreCellar server**, which you run yourself on your own hardware: a home server, a NAS or a
-Raspberry Pi. The server is also open source and will be released soon.
+[**LibreCellar server**](https://github.com/sim0nx/LibreCellar_backend), which you run yourself on your own hardware: a home server, a NAS or a
+Raspberry Pi. The server is open source as well.
 
 There is no LibreCellar cloud and no account with us. The app only talks to the server you set
 up.
@@ -51,7 +51,7 @@ The full details are in the [privacy policy](PRIVACY.md).
 
 ## Getting started
 
-1. Set up the LibreCellar server on your network (release coming soon).
+1. Set up the [LibreCellar server](https://github.com/sim0nx/LibreCellar_backend) on your network; its README explains how.
 2. Install the app from Google Play, or build it from source.
 3. Open **Settings**, enter your server's address and sign in.
 

@@ -1,6 +1,6 @@
 # LibreCellar - Backend API
 
-The REST API the LibreCellar Android app expects from its server: the client's structure, the endpoints with pagination, the connection test and the JSON data contracts. The LibreCellar server implements this API.
+The REST API the LibreCellar Android app expects from its server: the client's structure, the endpoints with pagination, the connection test and the JSON data contracts. The [LibreCellar server](https://github.com/sim0nx/LibreCellar_backend) implements this API.
 
 ---
 
