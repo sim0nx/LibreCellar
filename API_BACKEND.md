@@ -53,7 +53,7 @@ The LibreCellar server is multi-user and built for households sharing one collec
 
 ### Endpoint Reference & Pagination Contract
 
-All `GET` collection endpoints (`/api/wines`, `/api/cellar/locations`, `/api/suppliers`, and their aliases `/api/racks` and `/api/merchants`) **support pagination with a standard page limit of 20 items per page**:
+All `GET` collection endpoints (`/api/wines`, `/api/cellar/locations` and `/api/suppliers`) **support pagination with a standard page limit of 20 items per page**:
 - `page`: Integer (1-indexed, default: `1`, minimum: `1`).
 - `limit`: Integer (default: `20`, range: `1` to `100`).
 - Offset calculation: `offset = (page - 1) * limit`.
@@ -75,22 +75,20 @@ All `GET` collection endpoints (`/api/wines`, `/api/cellar/locations`, `/api/sup
 | `POST` | `/api/wines/{id}/increment` | Increment bottle stock by 1 (atomic) | None | Yes | `DecrementInventoryResponse` |
 | `POST` | `/api/wines/{id}/decrement` | Decrement bottle stock by 1 (atomic; the last bottle also frees its rack slot) | None | Yes | `DecrementInventoryResponse` |
 
-#### 3. Cellar Locations & Racks (`/api/cellar/locations` & `/api/racks`)
+#### 3. Cellar Locations & Racks (`/api/cellar/locations`)
 | Method | Endpoint | Description | Query Params | Protected | Response |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `GET` | `/api/cellar/locations` | List cellar racks (paginated) | `page=1&limit=20` | Yes | `List<CellarLocation>` (max 20) |
-| `GET` | `/api/racks` | Alias for racks | `page=1&limit=20` | Yes | `List<CellarLocation>` (max 20) |
 | `GET` | `/api/cellar/locations/{id}`| Get rack by ID | None | Yes | `CellarLocation` (or 404) |
 | `POST` | `/api/cellar/locations` | Create a new rack | None | Yes | `CellarLocation` (201) |
 | `PUT` | `/api/cellar/locations/{id}`| Update existing rack (shrinking frees slots that no longer exist) | None | Yes | `CellarLocation` |
 | `DELETE`| `/api/cellar/locations/{id}`| Delete rack (its bottles become unassigned) | None | Yes | `204 No Content` |
 | `POST` | `/api/cellar/locations/{id}/assign-slot` | Assign wine to a rack slot; `location_id: null` takes it out of its rack | None | Yes | Updated `Wine` object |
 
-#### 4. Merchants & Suppliers (`/api/suppliers` & `/api/merchants`)
+#### 4. Merchants & Suppliers (`/api/suppliers`)
 | Method | Endpoint | Description | Query Params | Protected | Response |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `GET` | `/api/suppliers` | List merchants (paginated) | `page=1&limit=20` | Yes | `List<Supplier>` (max 20) |
-| `GET` | `/api/merchants` | Alias for merchants | `page=1&limit=20` | Yes | `List<Supplier>` (max 20) |
 | `GET` | `/api/suppliers/{id}` | Get merchant by ID | None | Yes | `Supplier` (or 404) |
 | `POST` | `/api/suppliers` | Add a merchant | None | Yes | `Supplier` (201) |
 | `PUT` | `/api/suppliers/{id}` | Update merchant | None | Yes | `Supplier` |
@@ -203,7 +201,7 @@ This prevents false positives where an unauthenticated or misconfigured server m
   "access": "write"
 }
 ```
-*`currency` is the ISO 4217 code of `purchase_price` (e.g. `"EUR"`, `"GBP"`). The app sets it on every wine it saves (default: the device region's currency, changeable per wine); wines saved before currencies existed have `null` and are shown in the viewer's device currency. Prices are never converted between currencies; price tiers only compare wines of the same currency.*
+*`currency` is the ISO 4217 code of `purchase_price` (e.g. `"EUR"`, `"GBP"`). The app sets it on every wine it saves (default: the device region's currency, changeable per wine); a wine without one is shown in the viewer's device currency. Prices are never converted between currencies; price tiers only compare wines of the same currency.*
 
 *`owner` and `access` are returned by the multi-user backend (also on `CellarLocation` and `Supplier`) and are read-only.*
 
@@ -238,7 +236,7 @@ This prevents false positives where an unauthenticated or misconfigured server m
   "date_added": "2024-05-01"
 }
 ```
-*`type` is one of the app's merchant types (default `"Wine Merchant"`). `date_added` is an ISO date; the server sets it to the current date when a merchant is created without one, and merchants that existed before the upgrade get the date of the upgrade. A client that sends neither field (e.g. an older app version) leaves both unchanged on update.*
+*`type` is one of the app's merchant types (default `"Wine Merchant"`). `date_added` is an ISO date; the server sets it to the current date when a merchant is created without one.*
 
 ### Assign Slot Request (`AssignSlotRequest`)
 ```json
@@ -286,7 +284,7 @@ data class Wine(
     @SerialName("custom_field") val customField: String? = null
 )
 ```
-New fields the backend adds are ignored by older app versions, and `null` values are not sent (see `ApiJson`).
+The app ignores fields it does not know, so a newer server can add fields, and `null` values are not sent (see `ApiJson`).
 
 ### Step 3: Updating the Repository (`WineRepository.kt`)
 Update the coroutine network caller in `WineRepository.kt`:

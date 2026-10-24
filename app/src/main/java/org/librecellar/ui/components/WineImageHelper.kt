@@ -112,7 +112,7 @@ object WineImageHelper {
 
     /**
      * Checks if the photo exists in the Android device's local cache.
-     * Looks in bottle_cache, bottle_photos, and camera_photos.
+     * Looks in bottle_cache and camera_photos.
      */
     fun getCachedImageFile(context: Context, filenameOrPath: String?): File? {
         if (filenameOrPath.isNullOrBlank() || isPreset(filenameOrPath)) return null
@@ -129,13 +129,7 @@ object WineImageHelper {
             return cacheFile
         }
 
-        // 3. Fallback to legacy bottle_photos directory
-        val legacyFile = File(File(context.filesDir, "bottle_photos"), filenameOrPath)
-        if (legacyFile.exists() && legacyFile.isFile && legacyFile.length() > 0) {
-            return legacyFile
-        }
-
-        // 4. Fallback to camera_photos cache directory
+        // 3. Fallback to camera_photos cache directory
         val cameraCacheFile = File(File(context.cacheDir, "camera_photos"), filenameOrPath)
         if (cameraCacheFile.exists() && cameraCacheFile.isFile && cameraCacheFile.length() > 0) {
             return cameraCacheFile
@@ -162,12 +156,6 @@ object WineImageHelper {
             val inCache = File(getBottleCacheDir(context), filenameOrPath)
             if (inCache.exists()) {
                 deletedAny = inCache.delete() || deletedAny
-            }
-
-            // Check legacy photos
-            val inLegacy = File(File(context.filesDir, "bottle_photos"), filenameOrPath)
-            if (inLegacy.exists()) {
-                deletedAny = inLegacy.delete() || deletedAny
             }
 
             // Check camera photos

@@ -132,7 +132,7 @@ fun EditWineScreen(
 
     // Valuation & Merchant
     var priceText by remember(wine) { mutableStateOf(LocaleFormat.formatDecimalInput(wine.purchasePrice)) }
-    // Wines saved before currencies existed get the device's currency once edited
+    // A wine without a currency gets the device's currency once edited
     var currency by remember(wine) { mutableStateOf(wine.effectiveCurrency) }
     var selectedTier by remember(wine) { mutableStateOf(WinePriceTier.fromKey(wine.priceTier)) }
     var purchaseLocation by remember(wine) { mutableStateOf(wine.purchaseLocation ?: "") }

@@ -383,7 +383,7 @@ fun SuppliersScreen(
                                     }
 
                                     // Date Added Tracker
-                                    if (supplier.dateAdded != null) Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(
                                             imageVector = AppIcons.CalendarToday,
                                             contentDescription = "Date Added",
@@ -512,9 +512,7 @@ fun SupplierFormDialog(
     var country by remember { mutableStateOf(supplierToEdit?.country ?: "") }
     var website by remember { mutableStateOf(supplierToEdit?.website ?: "") }
     var notes by remember { mutableStateOf(supplierToEdit?.notes ?: "") }
-    var dateAdded by remember {
-        mutableStateOf(if (supplierToEdit == null) LocalDate.now().toString() else supplierToEdit.dateAdded.orEmpty())
-    }
+    var dateAdded by remember { mutableStateOf(supplierToEdit?.dateAdded ?: LocalDate.now().toString()) }
 
     val types = listOf(
         "Wine Merchant",
@@ -639,7 +637,7 @@ fun SupplierFormDialog(
                                 country = country.ifBlank { null },
                                 website = website.ifBlank { null },
                                 notes = notes.ifBlank { null },
-                                dateAdded = dateAdded.ifBlank { null }
+                                dateAdded = dateAdded.ifBlank { baseSupplier.dateAdded }
                             )
                         )
                     }
@@ -659,7 +657,7 @@ fun SupplierFormDialog(
     )
 }
 
-// Backward compatibility alias
+/** Adds a merchant: the form for a new one, with a name (and countries) suggested by the caller. */
 @Composable
 fun AddSupplierDialog(
     initialName: String = "",

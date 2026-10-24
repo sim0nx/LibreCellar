@@ -14,7 +14,7 @@ object WineStatistics {
     private fun considered(wines: List<Wine>, includeEmpty: Boolean) =
         wines.filter { includeEmpty || it.quantity > 0 }
 
-    /** Same country however it is written (code, alias, flag prefix): its English name. */
+    /** Same country however it is written (code or alias): its English name. */
     fun countryName(country: String?): String? {
         val trimmed = country?.trim().orEmpty()
         if (trimmed.isEmpty()) return null

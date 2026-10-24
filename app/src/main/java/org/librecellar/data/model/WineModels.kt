@@ -136,7 +136,7 @@ data class Wine(
     @SerialName("tasting_rating") val tastingRating: Int? = null, // 1 to 5 stars
     @SerialName("comments") val comments: String? = null,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
-    // ISO 4217 code of purchasePrice, e.g. "EUR"; null for wines saved before currencies existed
+    // ISO 4217 code of purchasePrice, e.g. "EUR"; null when none was given (see effectiveCurrency)
     @SerialName("currency") val currency: String? = null,
     @SerialName("purchase_location") val purchaseLocation: String? = null, // Vendor/Shop name
     @SerialName("photo_url") val photoUrl: String? = null,
@@ -218,7 +218,7 @@ data class Supplier(
     @SerialName("country") val country: String? = null,
     @SerialName("website") val website: String? = null,
     @SerialName("notes") val notes: String? = null,
-    @SerialName("date_added") val dateAdded: String? = null, // ISO yyyy-MM-dd; null for merchants added before servers stored it
+    @SerialName("date_added") val dateAdded: String = LocalDate.now().toString(), // ISO yyyy-MM-dd
     @SerialName("owner") override val owner: String? = null,
     @SerialName("access") override val access: String? = null
 ) : SharedEntry

@@ -63,12 +63,6 @@ interface WineApiService {
         @Query("limit") limit: Int? = null
     ): Response<List<CellarLocation>>
 
-    @GET("api/racks")
-    suspend fun getRacks(
-        @Query("page") page: Int? = null,
-        @Query("limit") limit: Int? = null
-    ): Response<List<CellarLocation>>
-
     @POST("api/cellar/locations")
     suspend fun createCellarLocation(@Body location: CellarLocation): Response<CellarLocation>
 
@@ -90,12 +84,6 @@ interface WineApiService {
     // --- Suppliers & Merchants API ---
     @GET("api/suppliers")
     suspend fun getSuppliers(
-        @Query("page") page: Int? = null,
-        @Query("limit") limit: Int? = null
-    ): Response<List<Supplier>>
-
-    @GET("api/merchants")
-    suspend fun getMerchants(
         @Query("page") page: Int? = null,
         @Query("limit") limit: Int? = null
     ): Response<List<Supplier>>

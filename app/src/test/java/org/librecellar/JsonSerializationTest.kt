@@ -78,7 +78,6 @@ class JsonSerializationTest {
         assertEquals(6, racks.single().totalSlots)
         val shop = ApiJson.decodeFromString(Supplier.serializer(), """{"id":"s1","name":"Shop"}""")
         assertEquals("Wine Merchant", shop.type)
-        assertEquals(null, shop.dateAdded)
         val winery = ApiJson.decodeFromString(
             Supplier.serializer(),
             """{"id":"s2","name":"Domaine","type":"Winery Direct","date_added":"2024-05-01"}"""

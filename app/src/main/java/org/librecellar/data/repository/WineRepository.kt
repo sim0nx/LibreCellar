@@ -18,7 +18,6 @@ import org.librecellar.data.model.LoginRequest
 import org.librecellar.data.model.Supplier
 import org.librecellar.data.model.Wine
 import org.librecellar.data.settings.AppSettings
-import org.librecellar.data.settings.LegacyPasswords
 import org.librecellar.data.settings.SettingsStore
 import org.librecellar.data.settings.TokenCipher
 import org.librecellar.ui.components.WineImageHelper
@@ -201,10 +200,10 @@ class WineRepository(private val context: Context) {
 
     // --- Known Varietals / Grapes Management & Autocomplete ---
     private val _grapes = MutableStateFlow<List<Grape>>(emptyList())
-    /** The user's grape list on the server (empty until loaded or with an older server). */
+    /** The user's grape list on the server (empty until loaded). */
     val grapes: StateFlow<List<Grape>> = _grapes.asStateFlow()
 
-    /** Loads the grape list; false if the server has none (an older server version). */
+    /** Loads the grape list; false if the server could not be reached or refused. */
     suspend fun reloadGrapes(): Boolean = withContext(Dispatchers.IO) {
         val resp = try {
             apiService.getGrapes()
@@ -297,15 +296,7 @@ class WineRepository(private val context: Context) {
     )
 
     init {
-        scope.launch {
-            // Earlier versions stored the password in plain text: exchange it for a login
-            // token once; it is deleted from the device either way
-            val legacyPassword = LegacyPasswords.take(context)
-            if (legacyPassword != null && sessionToken == null && _username.value.isNotBlank()) {
-                obtainToken(_username.value, legacyPassword)
-            }
-            checkConnectionAndSync()
-        }
+        scope.launch { checkConnectionAndSync() }
     }
 
     private fun buildRetrofit(url: String, sslVerify: Boolean): WineApiService {

@@ -6,10 +6,7 @@ data class CountryItem(
     val code: String,
     val name: String,
     val flagEmoji: String
-) {
-    val displayLabel: String
-        get() = "$flagEmoji $name"
-}
+)
 
 object CountryHelper {
 
@@ -49,10 +46,7 @@ object CountryHelper {
     fun findCountry(query: String?): CountryItem? {
         if (query.isNullOrBlank()) return null
         val trimmed = query.trim()
-
-        // Remove any leading emoji if present (e.g. "🇫🇷 France" -> "France")
-        val cleanName = trimmed.replace(Regex("^[\\p{So}\\p{Sk}\\p{Cs}\\p{Cn}\\s]+"), "").trim()
-        val searchTarget = cleanName.ifBlank { trimmed }
+        val searchTarget = trimmed
 
         return allCountries.find {
             it.name.equals(searchTarget, ignoreCase = true) ||
